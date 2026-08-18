@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# secrets
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# build output
+dist/
+build/
+
+# Prisma generated client — rebuilt from schema.prisma via `prisma generate`
+apps/api/src/generated/
+
+# test artifacts
+coverage/
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
