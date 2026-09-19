@@ -13,6 +13,15 @@ enum UserRole {
   ADMIN
   DISPATCHER
   DRIVER
+  MERCHANT
+}
+
+// The 3 legs every parcel travels through. Order is enforced by `sequence`,
+// not by enum order, so re-ordering later doesn't require a migration.
+enum DeliveryPhase {
+  IN_CITY
+  INTERCITY
+  DESTINATION_CITY
 }
 
 model User {
@@ -28,4 +37,128 @@ model User {
   refreshTokenExpiresAt   DateTime?
   resetTokenHash          String?
   resetTokenExpiresAt     DateTime?
+
+  driver                  Driver?
+  merchant                Merchant?
+}
+
+model Merchant {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  name        String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  parcels     Parcel[]
+}
+
+model Driver {
+  id                  String        @id @default(cuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id])
+  status              String        @default("available") // available, assigned, on_duty, off_duty, on_break
+  currentLocation     String?       // GPS coordinates or area
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  assignments         Assignment[]
+}
+
+model Parcel {
+  id             String    @id @default(cuid())
+  merchantId     String
+  merchant       Merchant  @relation(fields: [merchantId], references: [id])
+  weight         Float?
+  dimensions     String?   // JSON string: {length, width, height}
+  codAmount      Float?
+  codStatus      String    @default("pending") // pending, collected, refunded, failed
+  status         String    @default("created") // created, picked_up, at_warehouse, on_route, delivered, returned
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  legs           ParcelLeg[] @relation("ParcelLegs")
+
+  // Denormalized pointer to the active leg — see note below on why.
+  currentLegId   String?     @unique
+  currentLeg     ParcelLeg?  @relation("CurrentLeg", fields: [currentLegId], references: [id])
+
+  @@index([merchantId])
+}
+
+// One row per phase per parcel. This is the pivot that gives a parcel
+// multiple drivers over its lifetime (one per leg, via the leg's group).
+model ParcelLeg {
+  id              String         @id @default(cuid())
+  parcelId        String
+  parcel          Parcel         @relation("ParcelLegs", fields: [parcelId], references: [id])
+  phase           DeliveryPhase
+  sequence        Int            // 1, 2, 3 — order of travel
+  status          String         @default("pending") // pending, in_progress, delivered, failed, returned
+  failedAttempts  Int            @default(0)
+  maxAttempts     Int            @default(3)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  groupId         String?
+  group           DeliveryGroup? @relation(fields: [groupId], references: [id])
+
+  attempts        DeliveryAttempt[]
+  isCurrentFor    Parcel?        @relation("CurrentLeg")
+
+  @@unique([parcelId, phase])
+  @@index([parcelId])
+  @@index([groupId])
+}
+
+// A batch the dispatcher assigns as a single unit, scoped to one phase.
+model DeliveryGroup {
+  id          String        @id @default(cuid())
+  phase       DeliveryPhase
+  status      String        @default("pending") // pending, assigned, in_progress, completed, cancelled
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  legs        ParcelLeg[]
+  assignments Assignment[]
+
+  @@index([phase, status])
+}
+
+model Assignment {
+  id             String        @id @default(cuid())
+  groupId        String
+  group          DeliveryGroup @relation(fields: [groupId], references: [id])
+  driverId       String
+  driver         Driver        @relation(fields: [driverId], references: [id])
+  assignedBy     String        // admin or dispatcher user ID
+  assignedAt     DateTime      @default(now())
+  status         String        @default("pending") // pending, accepted, in_progress, completed, failed, cancelled
+  deliveryNotes  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([groupId])
+  @@index([driverId])
+}
+
+model DeliveryAttempt {
+  id             String     @id @default(cuid())
+  parcelLegId    String
+  parcelLeg      ParcelLeg  @relation(fields: [parcelLegId], references: [id])
+  status         String     // success, failed, returned
+  failureReason  String?    // address not found, recipient unavailable, etc.
+  failureCode    String?    // structured code for LLM/enhanced tracking
+  gpsLocation    String?
+  photos         String?    // JSON array of photo URLs
+  signature      String?
+  attemptedAt    DateTime   @default(now())
+  completedAt    DateTime?
+  notes          String?
+  createdAt      DateTime   @default(now())
+
+  @@index([parcelLegId])
 }

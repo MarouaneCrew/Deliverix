@@ -1,0 +1,11 @@
+The mental model — how to build this yourself
+
+This is the real question, so here's the actual process I use, roughly in order:
+
+Draw the process before the tables. Sketch the parcel's real-world journey as boxes and arrows on paper — created → warehouse → warehouse → delivered — before opening schema.prisma. The schema should mirror that flow; if you're staring at Prisma syntax trying to invent the flow, you're solving the problem backwards.
+Separate identity from role. Any time an entity "is-a" more specific thing (a User is a Driver, a User is a Merchant), that's a 1:1 child table, not duplicated fields. Ask: "if I deleted this row, does the parent still make sense alone?" If yes → separate table.
+Reify relationships that carry their own data or their own timeline. The moment a relationship needs a status, a timestamp, a note, or could exist without either side changing — it's not a foreign key, it's its own table. That's exactly why Assignment and ParcelLeg exist instead of a plain driverId column on Parcel.
+Ask "could this become more than one?" for every field. deliveryGroup: String? on the original Parcel was a single value — but you already knew phases could be plural, which is the tell that it needed to be its own table, not a fatter field.
+Distinguish constants from "constants for now." Enums are great for things that are genuinely closed and rarely change (a UserRole, a currency code). The moment a domain expert says "well, usually 3, but sometimes 5" — that's not an enum, that's a child table with a sequence.
+Prefer explicit ordering/state over positional/structural assumptions — the sequence vs enum-order point above generalizes: don't let array position, enum declaration order, or "insertion order" silently encode business meaning.
+Interrogate your own design with edge cases before you trust it: "what if a parcel skips a phase," "what if a driver needs reassigning mid-leg," "what if two merchants share a warehouse." If the schema makes any of these awkward to express, that's usually the seam telling you where the next table boundary should be.
