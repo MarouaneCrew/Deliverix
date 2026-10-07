@@ -5,9 +5,10 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { GLOBAL_THROTTLE_LIMIT } from './auth/constants/throttle.constants';
+import { RequestLoggingInterceptor } from './common/request-logging.interceptor';
 
 @Module({
   imports: [
@@ -26,6 +27,10 @@ import { GLOBAL_THROTTLE_LIMIT } from './auth/constants/throttle.constants';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestLoggingInterceptor
     }
   ],
 })
