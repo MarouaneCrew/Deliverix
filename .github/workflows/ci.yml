@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql://deliverix:deliverix_ci@localhost:5432/deliverix_test
+      JWT_SECRET: ci-only-secret
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: deliverix
+          POSTGRES_PASSWORD: deliverix_ci
+          POSTGRES_DB: deliverix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deliverix -d deliverix_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run build
+      - name: Write .env.test
+        run: |
+          cat > .env.test <<'EOF'
+          NODE_ENV=test
+          DATABASE_URL=postgresql://deliverix:deliverix_ci@localhost:5432/deliverix_test
+          JWT_SECRET=ci-only-secret
+          PORT=3001
+          LOGIN_THROTTLE_LIMIT=1000
+          FORGOT_PASSWORD_THROTTLE_LIMIT=1000
+          THROTTLE_GLOBAL_LIMIT=100000
+          EOF
+      - run: npm run test:e2e:migrate
+      - run: npm run test:e2e:all
