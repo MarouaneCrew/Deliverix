@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { HealthModule } from './health/health.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -19,7 +20,7 @@ import { RequestLoggingInterceptor } from './common/request-logging.interceptor'
         limit: GLOBAL_THROTTLE_LIMIT,  // 20 requests per 60s per IP, applied globally by default
       },
     ]),
-    PrismaModule, AuthModule, UsersModule
+    PrismaModule, AuthModule, UsersModule, HealthModule
   ],
   controllers: [AppController],
   providers: [
