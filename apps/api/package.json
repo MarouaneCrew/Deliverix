@@ -20,7 +20,8 @@
     "test:e2e": "dotenv -e .env.test -- jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:throttle": "jest --config ./test/jest-e2e-throttle.json --runInBand",
     "test:e2e:all": "npm run test:e2e && npm run test:e2e:throttle",
-    "test:e2e:migrate": "dotenv -e .env.test -- prisma migrate deploy"
+    "test:e2e:migrate": "dotenv -e .env.test -- prisma migrate deploy",
+    "test:e2e:setup": "bash scripts/setup-test-db.sh"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
