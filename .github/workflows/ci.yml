@@ -8,46 +8,70 @@ on:
 jobs:
   api:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
-    env:
-      DATABASE_URL: postgresql://deliverix:deliverix_ci@localhost:5432/deliverix_test
-      JWT_SECRET: ci-only-secret
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: deliverix
-          POSTGRES_PASSWORD: deliverix_ci
-          POSTGRES_DB: deliverix_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U deliverix -d deliverix_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+
+      - name: Generate throwaway credentials
+        run: |
+          DB_PASSWORD="$(openssl rand -hex 16)"
+          JWT="$(openssl rand -hex 32)"
+          echo "::add-mask::$DB_PASSWORD"
+          echo "::add-mask::$JWT"
+          {
+            echo "POSTGRES_USER=deliverix"
+            echo "POSTGRES_PASSWORD=$DB_PASSWORD"
+            echo "POSTGRES_DB=deliverix_test"
+            echo "POSTGRES_PORT=5432"
+            echo "JWT_SECRET=$JWT"
+            echo "DATABASE_URL=postgresql://deliverix:$DB_PASSWORD@localhost:5432/deliverix_test"
+          } >> "$GITHUB_ENV"
+
+      - name: Start PostgreSQL (docker compose)
+        run: docker compose up -d --wait postgres
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: apps/api/package-lock.json
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run build
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: npx prisma generate
+
+      - name: Build
+        working-directory: apps/api
+        run: npm run build
+
       - name: Write .env.test
+        working-directory: apps/api
         run: |
-          cat > .env.test <<'EOF'
+          cat > .env.test <<EOF
           NODE_ENV=test
-          DATABASE_URL=postgresql://deliverix:deliverix_ci@localhost:5432/deliverix_test
-          JWT_SECRET=ci-only-secret
+          DATABASE_URL=$DATABASE_URL
+          JWT_SECRET=$JWT_SECRET
           PORT=3001
           LOGIN_THROTTLE_LIMIT=1000
           FORGOT_PASSWORD_THROTTLE_LIMIT=1000
           THROTTLE_GLOBAL_LIMIT=100000
           EOF
-      - run: npm run test:e2e:migrate
-      - run: npm run test:e2e:all
+
+      - name: Apply migrations to the test database
+        working-directory: apps/api
+        run: npm run test:e2e:migrate
+
+      - name: E2E tests
+        working-directory: apps/api
+        run: npm run test:e2e:all
+
+      - name: PostgreSQL logs (on failure)
+        if: failure()
+        run: docker compose logs postgres
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
