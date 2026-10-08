@@ -13,12 +13,72 @@ enum UserRole {
   ADMIN
   DISPATCHER
   DRIVER
+  MERCHANT
 }
 
+enum DriverEngagement {
+  CONTRACTOR
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_DELIVERY
+  OFFLINE
+}
+
+model Company {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users     User[]
+  hubs      Hub[]
+  merchants Merchant[]
+}
+
+// Shared reference data. Deliberately NOT tenant-owned (no companyId).
+model City {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  hubs      Hub[]
+  merchants Merchant[]
+}
+
+model Hub {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  cityId    String
+  city      City      @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  name      String
+  address   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  dispatchers User[]
+  drivers     Driver[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@index([cityId])
+}
+
+// Base identity table. Everything shared by all staff/people lives here.
+// Driver is a 1:1 extension of User; Merchant optionally links to one.
 model User {
   id                    String    @id @default(cuid())
   email                 String    @unique
   passwordHash          String
+  fullName              String
+  phone                 String?
   role                  UserRole
   isActive              Boolean   @default(true)
   createdAt             DateTime  @default(now())
@@ -28,4 +88,53 @@ model User {
   refreshTokenExpiresAt DateTime?
   resetTokenHash        String?
   resetTokenExpiresAt   DateTime?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  // Only meaningful for DISPATCHER users (their hub). Null for everyone else.
+  hubId     String?
+  hub       Hub?    @relation(fields: [hubId], references: [id], onDelete: Restrict)
+
+  driver    Driver?
+  merchant  Merchant?
+
+  @@index([companyId])
+  @@index([hubId])
+}
+
+// A business record. Exists even without a login (userId null).
+model Merchant {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  userId    String?   @unique
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  cityId    String
+  city      City      @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  name      String
+  phone     String?
+  address   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([cityId])
+}
+
+// 1:1 extension of User (role DRIVER). companyId, name, phone, isActive and
+// deletedAt are NOT repeated here: they live on the User row.
+model Driver {
+  id         String           @id @default(cuid())
+  userId     String           @unique
+  user       User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  homeHubId  String
+  homeHub    Hub              @relation(fields: [homeHubId], references: [id], onDelete: Restrict)
+  engagement DriverEngagement @default(CONTRACTOR)
+  status     DriverStatus     @default(AVAILABLE)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([homeHubId])
 }
