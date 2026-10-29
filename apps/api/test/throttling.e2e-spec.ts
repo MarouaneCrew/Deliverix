@@ -3,7 +3,9 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { cleanDatabase } from './utils/db-cleanup';
+import { cleanDatabase, createTenant } from './utils/fixtures';
+
+let tenant: Awaited<ReturnType<typeof createTenant>>;
 
 describe('Rate limiting (e2e)', () => {
     let app: INestApplication;
@@ -20,6 +22,7 @@ describe('Rate limiting (e2e)', () => {
 
         prisma = app.get(PrismaService);
         await cleanDatabase(prisma);
+        tenant = await createTenant(prisma);
     });
 
     afterEach(async () => {
@@ -47,7 +50,7 @@ describe('Rate limiting (e2e)', () => {
         const password = 'password123';
 
         await prisma.user.create({
-            data: { email, passwordHash: await hashForTest(password), role: 'ADMIN' },
+            data: { email, passwordHash: await hashForTest(password), role: 'ADMIN', fullName: 'Test ADMIN', company: { connect: { id: tenant.company.id } } },
         });
 
         await request(app.getHttpServer())

@@ -4,6 +4,9 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { cleanDatabase } from './utils/db-cleanup';
+import { createTenant, createUserFixture, loginAs } from './utils/fixtures';
+
+let tenant: Awaited<ReturnType<typeof createTenant>>;
 
 describe('Auth (e2e)', () => {
     let app: INestApplication;
@@ -27,20 +30,21 @@ describe('Auth (e2e)', () => {
 
     beforeEach(async () => {
         await cleanDatabase(prisma);
+        tenant = await createTenant(prisma);
     });
 
-    describe('POST /auth/login', () => {
+describe('POST /auth/login', () => {
         const email = 'e2e-login@deliverix.test';
         const password = 'password123';
 
         beforeEach(async () => {
-            // Create the user through the real API, not a Prisma shortcut —
-            // this also incidentally exercises /users creation as a side effect.
             await prisma.user.create({
                 data: {
                     email,
                     passwordHash: await hashForTest(password),
                     role: 'ADMIN',
+                    fullName: 'Test ADMIN',
+                    company: { connect: { id: tenant.company.id } },
                 },
             });
         });
@@ -100,6 +104,8 @@ describe('Auth (e2e)', () => {
                     email,
                     passwordHash: await hashForTest(password),
                     role: 'ADMIN',
+                    fullName: 'Test ADMIN',
+                    company: { connect: { id: tenant.company.id } },
                 },
             });
         });
@@ -198,6 +204,8 @@ describe('Auth (e2e)', () => {
                     email,
                     passwordHash: await hashForTest(password),
                     role: 'ADMIN',
+                    fullName: 'Test ADMIN',
+                    company: { connect: { id: tenant.company.id } },
                 },
             });
         });
@@ -266,6 +274,8 @@ describe('Auth (e2e)', () => {
                     email,
                     passwordHash: await hashForTest(password),
                     role: 'ADMIN',
+                    fullName: 'Test ADMIN',
+                    company: { connect: { id: tenant.company.id } },
                 },
             });
         });
@@ -378,6 +388,8 @@ describe('Auth (e2e)', () => {
                     email,
                     passwordHash: await hashForTest(password),
                     role: 'ADMIN',
+                    fullName: 'Test ADMIN',
+                    company: { connect: { id: tenant.company.id } },
                 },
             });
         });
@@ -506,11 +518,93 @@ describe('Auth (e2e)', () => {
                 .expect(400);
         });
     });
+
+    describe('Access token revocation', () => {
+    async function setup() {
+        const target = await createUserFixture(prisma, { companyId: tenant.company.id, role: 'ADMIN' });
+        const actor = await createUserFixture(prisma, { companyId: tenant.company.id, role: 'ADMIN' });
+        return {
+            target,
+            targetTokens: await loginAs(app, target.email, target.password),
+            actorTokens: await loginAs(app, actor.email, actor.password),
+        };
+    }
+
+    it('GET /auth/me returns userId, role, companyId, hubId', async () => {
+        const { target, targetTokens } = await setup();
+        const res = await request(app.getHttpServer())
+            .get('/auth/me')
+            .set('Authorization', `Bearer ${targetTokens.accessToken}`)
+            .expect(200);
+        expect(res.body).toEqual({
+            userId: target.user.id, role: 'ADMIN', companyId: tenant.company.id, hubId: null,
+        });
+    });
+
+    it('deactivated user token is rejected immediately', async () => {
+        const { target, targetTokens, actorTokens } = await setup();
+        await request(app.getHttpServer())
+            .patch(`/users/${target.user.id}`)
+            .set('Authorization', `Bearer ${actorTokens.accessToken}`)
+            .send({ isActive: false }).expect(200);
+        await request(app.getHttpServer())
+            .get('/auth/me')
+            .set('Authorization', `Bearer ${targetTokens.accessToken}`)
+            .expect(401);
+    });
+
+    it('soft-deleted user token is rejected immediately', async () => {
+        const { target, targetTokens, actorTokens } = await setup();
+        await request(app.getHttpServer())
+            .delete(`/users/${target.user.id}`)
+            .set('Authorization', `Bearer ${actorTokens.accessToken}`)
+            .expect(200);
+        await request(app.getHttpServer())
+            .get('/auth/me')
+            .set('Authorization', `Bearer ${targetTokens.accessToken}`)
+            .expect(401);
+    });
 });
+
+    it('GET /auth/me returns user payload with company and hub after login', async () => {
+        // Create an ADMIN user and log in
+        await prisma.user.create({
+            data: {
+                email: 'e2e-me@deliverix.test',
+                passwordHash: await hashForTest('password123'),
+                role: 'ADMIN',
+                fullName: 'Test ADMIN',
+                companyId: tenant.company.id,
+            },
+        });
+
+        const loginRes = await request(app.getHttpServer())
+            .post('/auth/login')
+            .send({ email: 'e2e-me@deliverix.test', password: 'password123' })
+            .expect(201);
+        const accessToken = loginRes.body.accessToken as string;
+
+        const dbUser = await prisma.user.findFirst({
+            where: { email: 'e2e-me@deliverix.test' },
+        });
+
+        const res = await request(app.getHttpServer())
+            .get('/auth/me')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .expect(200);
+
+        expect(res.body).toEqual({
+            userId: dbUser.id,
+            role: 'ADMIN',
+            companyId: tenant.company.id,
+            hubId: null,
+        });
+    });
+
+    });
 
 // Small local helper — avoids importing bcrypt config decisions into the test file
 async function hashForTest(password: string): Promise<string> {
     const bcrypt = await import('bcryptjs');
     return bcrypt.hash(password, 10);
 }
-

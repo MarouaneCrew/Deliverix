@@ -1,5 +1,4 @@
-import { IsBoolean, IsEmail, IsEnum, IsOptional, MinLength } from "class-validator";
-import { assignableRoles, AssignableUserRole } from "../constants/user-roles";
+import { IsBoolean, IsEmail, IsOptional, IsString, IsNotEmpty, MinLength } from "class-validator";
 
 export class UpdateUserDto {
     @IsOptional()
@@ -11,8 +10,9 @@ export class UpdateUserDto {
     password?: string;
 
     @IsOptional()
-    @IsEnum(assignableRoles)
-    role?: AssignableUserRole;
+    @IsString()
+    @IsNotEmpty()
+    hubId?: string;
 
     @IsOptional()
     @IsBoolean()

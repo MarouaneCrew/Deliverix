@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, MinLength, IsEnum } from 'class-validator';
 import { assignableRoles, AssignableUserRole } from '../constants/user-roles';
 
 export class CreateUserDto {
@@ -11,4 +11,8 @@ export class CreateUserDto {
 
     @IsEnum(assignableRoles)
     role: AssignableUserRole;
+
+    @IsString()
+    @IsNotEmpty()
+    hubId: string;
 }

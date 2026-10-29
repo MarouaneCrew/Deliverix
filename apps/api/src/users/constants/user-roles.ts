@@ -1,7 +1,6 @@
 import { UserRole } from "../../generated/prisma/enums";
 
-export const assignableRoles = Object.values(UserRole).filter(
-    (role) => role !== UserRole.ADMIN
-);
+// /users only creates staff that need no profile. Drivers and merchants are created via /drivers and /merchants.
+export const assignableRoles = [UserRole.DISPATCHER];
 
-export type AssignableUserRole = Exclude<UserRole, 'ADMIN'>;
+export type AssignableUserRole = typeof UserRole.DISPATCHER;

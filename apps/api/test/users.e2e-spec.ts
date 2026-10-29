@@ -4,6 +4,9 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { cleanDatabase } from './utils/db-cleanup';
+import { createTenant, createUserFixture, loginAs } from './utils/fixtures';
+
+let tenant: Awaited<ReturnType<typeof createTenant>>;
 
 describe('Users (e2e)', () => {
     let app: INestApplication;
@@ -27,57 +30,40 @@ describe('Users (e2e)', () => {
 
     beforeEach(async () => {
         await cleanDatabase(prisma);
+        tenant = await createTenant(prisma);
     });
 
     async function createAndLogin(role: 'ADMIN' | 'DISPATCHER' | 'DRIVER') {
-        const email = `e2e-${role.toLowerCase()}-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}@deliverix.test`;
-        const password = 'password123';
-
-        await prisma.user.create({
-            data: { email, passwordHash: await hashForTest(password), role },
+        const { email } = await createUserFixture(prisma, {
+            companyId: tenant.company.id,
+            role,
         });
 
-        const res = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({ email, password })
-            .expect(201);
-
-        return { email, accessToken: res.body.accessToken as string };
+        const loginRes = await loginAs(app, email, 'password123');
+        return { email, accessToken: loginRes.accessToken as string };
     }
 
     describe('POST /users', () => {
-        it('ADMIN creates a DISPATCHER user, response excludes passwordHash', async () => {
+        it('ADMIN creates a DISPATCHER user, response excludes passwordHash, includes hubId', async () => {
             const { accessToken } = await createAndLogin('ADMIN');
 
             const res = await request(app.getHttpServer())
                 .post('/users')
                 .set('Authorization', `Bearer ${accessToken}`)
-                .send({ email: 'new-dispatcher@deliverix.test', password: 'password123', role: 'DISPATCHER' })
+                .send({ email: 'new-dispatcher@deliverix.test', password: 'password123', role: 'DISPATCHER', hubId: tenant.hub.id })
                 .expect(201);
 
-            expect(res.body).toMatchObject({ email: 'new-dispatcher@deliverix.test', role: 'DISPATCHER' });
+            expect(res.body).toMatchObject({ email: 'new-dispatcher@deliverix.test', role: 'DISPATCHER', hubId: tenant.hub.id });
             expect(res.body).not.toHaveProperty('passwordHash');
         });
 
-        it('ADMIN creates a DRIVER user', async () => {
+        it('rejects creating a DRIVER via /users (drivers are created via /drivers)', async () => {
             const { accessToken } = await createAndLogin('ADMIN');
 
             await request(app.getHttpServer())
                 .post('/users')
                 .set('Authorization', `Bearer ${accessToken}`)
                 .send({ email: 'new-driver@deliverix.test', password: 'password123', role: 'DRIVER' })
-                .expect(201);
-        });
-
-        it('rejects creating a user with role ADMIN through the DTO (privilege-escalation guard)', async () => {
-            const { accessToken } = await createAndLogin('ADMIN');
-
-            await request(app.getHttpServer())
-                .post('/users')
-                .set('Authorization', `Bearer ${accessToken}`)
-                .send({ email: 'sneaky-admin@deliverix.test', password: 'password123', role: 'ADMIN' })
                 .expect(400);
         });
 
@@ -87,7 +73,7 @@ describe('Users (e2e)', () => {
             await request(app.getHttpServer())
                 .post('/users')
                 .set('Authorization', `Bearer ${accessToken}`)
-                .send({ email: 'blocked@deliverix.test', password: 'password123', role: 'DRIVER' })
+                .send({ email: 'blocked@deliverix.test', password: 'password123', role: 'DRIVER', hubId: tenant.hub.id })
                 .expect(403);
         });
 
@@ -104,13 +90,13 @@ describe('Users (e2e)', () => {
             await request(app.getHttpServer())
                 .post('/users')
                 .set('Authorization', `Bearer ${accessToken}`)
-                .send({ email: 'dup@deliverix.test', password: 'password123', role: 'DRIVER' })
+                .send({ email: 'dup@deliverix.test', password: 'password123', role: 'DISPATCHER', hubId: tenant.hub.id })
                 .expect(201);
 
             await request(app.getHttpServer())
                 .post('/users')
                 .set('Authorization', `Bearer ${accessToken}`)
-                .send({ email: 'dup@deliverix.test', password: 'password123', role: 'DISPATCHER' })
+                .send({ email: 'dup@deliverix.test', password: 'password123', role: 'DISPATCHER', hubId: tenant.hub.id })
                 .expect(409);
         });
 
@@ -120,7 +106,7 @@ describe('Users (e2e)', () => {
             await request(app.getHttpServer())
                 .post('/users')
                 .set('Authorization', `Bearer ${accessToken}`)
-                .send({ email: 'shortpw@deliverix.test', password: 'short', role: 'DRIVER' })
+                .send({ email: 'shortpw@deliverix.test', password: 'short', role: 'DISPATCHER', hubId: tenant.hub.id })
                 .expect(400);
         });
     });
@@ -216,7 +202,7 @@ describe('Users (e2e)', () => {
             expect(res.body.isActive).toBe(false);
         });
 
-        it('rejects trying to promote a user to ADMIN via the DTO', async () => {
+        it('ignores a role field on update (role is immutable)', async () => {
             const { accessToken } = await createAndLogin('ADMIN');
             const target = await createAndLogin('DISPATCHER');
             const user = await prisma.user.findUniqueOrThrow({ where: { email: target.email } });
@@ -225,7 +211,10 @@ describe('Users (e2e)', () => {
                 .patch(`/users/${user.id}`)
                 .set('Authorization', `Bearer ${accessToken}`)
                 .send({ role: 'ADMIN' })
-                .expect(400);
+                .expect(200);
+
+            const updated = await prisma.user.findUnique({ where: { id: user.id } });
+            expect(updated.role).toBe('DISPATCHER');
         });
 
         it('returns 404 updating an unknown id', async () => {
@@ -287,6 +276,79 @@ describe('Users (e2e)', () => {
                 .delete('/users/anything')
                 .set('Authorization', `Bearer ${accessToken}`)
                 .expect(403);
+        });
+    });
+
+    // NEW T1.2F tests
+    describe('Tenancy', () => {
+        let secondTenant: Awaited<ReturnType<typeof createTenant>>;
+
+        beforeEach(async () => {
+            secondTenant = await createTenant(prisma, ' B');
+        });
+
+        it('POST /users with hubId of another company returns 404', async () => {
+            const { accessToken } = await createAndLogin('ADMIN');
+
+            await request(app.getHttpServer())
+                .post('/users')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ email: 'cross-company@deliverix.test', password: 'password123', role: 'DISPATCHER', hubId: secondTenant.hub.id })
+                .expect(404);
+        });
+
+        it('PATCH /users/:id with hubId on non-DISPATCHER role returns 400', async () => {
+            const { accessToken } = await createAndLogin('ADMIN');
+            const driver = await createUserFixture(prisma, {
+                companyId: tenant.company.id,
+                role: 'DRIVER',
+            });
+
+            await request(app.getHttpServer())
+                .patch(`/users/${driver.user.id}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({ hubId: tenant.hub.id })
+                .expect(400);
+        });
+
+        it('GET /users/:id for a user of another company returns 404', async () => {
+            const { accessToken } = await createAndLogin('ADMIN');
+
+            const otherUser = await createUserFixture(prisma, {
+                companyId: secondTenant.company.id,
+                role: 'DRIVER',
+            });
+
+            await request(app.getHttpServer())
+                .get(`/users/${otherUser.user.id}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(404);
+        });
+
+        it('GET /users returns only users of the caller\'s company', async () => {
+            const { accessToken } = await createAndLogin('ADMIN');
+
+            // Create a user in the second company
+            await createUserFixture(prisma, {
+                companyId: secondTenant.company.id,
+                role: 'DRIVER',
+            });
+
+            const res = await request(app.getHttpServer())
+                .get('/users')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            // Should only see users from the first company
+            expect(res.body.length).toBeGreaterThanOrEqual(1);
+            // Check that no user from the second company is included
+            const otherUserEmail = await prisma.user.findFirst({
+                where: { companyId: secondTenant.company.id },
+                select: { email: true },
+            });
+            if (otherUserEmail) {
+                expect(res.body).not.toContainEqual(expect.objectContaining({ email: otherUserEmail.email }));
+            }
         });
     });
 });

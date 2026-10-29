@@ -5,6 +5,8 @@ declare global {
         interface User {
             userId: string;
             role: UserRole;
+            companyId: string;
+            hubId: string | null;
         }
     }
 }

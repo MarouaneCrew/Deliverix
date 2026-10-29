@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,22 +9,31 @@ import { Prisma } from '../generated/prisma/client';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async create(createUserDto: CreateUserDto) {
+  async create(companyId: string, dto: CreateUserDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
-        email: createUserDto.email
+        email: dto.email
       }
     });
 
     if (existingUser) throw new ConflictException('Email already exists');
 
-    const passwordHash = await bcrypt.hash(createUserDto.password, 10);
+    const hubExists = await this.prisma.hub.findFirst({
+      where: { id: dto.hubId, companyId }
+    });
+
+    if (!hubExists) throw new NotFoundException('Hub not found');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.user.create({
       data: {
-        email: createUserDto.email,
+        email: dto.email,
         passwordHash,
-        role: createUserDto.role
+        role: dto.role,
+        hubId: dto.hubId,
+        companyId,
+        fullName: `Test ${dto.role}`
       }
     });
 
@@ -32,33 +41,35 @@ export class UsersService {
       id: user.id,
       email: user.email,
       role: user.role,
-      isActive: user.isActive
+      isActive: user.isActive,
+      hubId: user.hubId
     };
   }
 
-  async findAll() {
+  async findAll(companyId: string) {
     return this.prisma.user.findMany({
+      where: { companyId },
       select: {
         id: true,
         email: true,
         role: true,
         isActive: true,
-        createdAt: true,
+        hubId: true,
+        createdAt: true
       }
     });
   }
 
-  async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: id
-      },
+  async findOne(companyId: string, id: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, companyId },
       select: {
         id: true,
         email: true,
         role: true,
         isActive: true,
-        createdAt: true,
+        hubId: true,
+        createdAt: true
       }
     });
 
@@ -67,28 +78,47 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(companyId: string, id: string, dto: UpdateUserDto) {
     const data: Prisma.UserUpdateInput = {
       email: dto.email,
-      role: dto.role,
-      isActive: dto.isActive,
+      isActive: dto.isActive
     };
 
     if (dto.password) {
       data.passwordHash = await bcrypt.hash(dto.password, 10);
     }
 
+    if (dto.hubId !== undefined) {
+      const target = await this.prisma.user.findFirst({
+        where: { id, companyId },
+        select: { role: true }
+      });
+
+      if (!target) throw new NotFoundException('User not found');
+
+      if (target.role !== 'DISPATCHER') throw new BadRequestException('hubId only applies to dispatchers');
+
+      const hubBelongsToCompany = await this.prisma.hub.findFirst({
+        where: { id: dto.hubId, companyId }
+      });
+
+      if (!hubBelongsToCompany) throw new NotFoundException('Hub not found');
+
+      data.hub = { connect: { id: dto.hubId } };
+    }
+
     try {
       return await this.prisma.user.update({
-        where: { id },
+        where: { id, companyId },
         data,
         select: {
           id: true,
           email: true,
           role: true,
           isActive: true,
-          createdAt: true,
-        },
+          hubId: true,
+          createdAt: true
+        }
       });
     } catch (error) {
       if (
@@ -107,17 +137,17 @@ export class UsersService {
     }
   }
 
-  async remove(id: string) {
+  async remove(companyId: string, id: string) {
     try {
       const user = await this.prisma.user.update({
-        where: { id },
+        where: { id, companyId },
         data: {
           isActive: false,
-          deletedAt: new Date(),
+          deletedAt: new Date()
         },
         select: {
-          id: true,
-        },
+          id: true
+        }
       });
 
       return user;
