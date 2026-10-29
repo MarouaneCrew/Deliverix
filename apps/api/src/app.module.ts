@@ -17,22 +17,25 @@ import { RequestLoggingInterceptor } from './common/request-logging.interceptor'
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 seconds, in ms
-        limit: GLOBAL_THROTTLE_LIMIT,  // 20 requests per 60s per IP, applied globally by default
+        limit: GLOBAL_THROTTLE_LIMIT, // 20 requests per 60s per IP, applied globally by default
       },
     ]),
-    PrismaModule, AuthModule, UsersModule, HealthModule
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard
+      useClass: ThrottlerGuard,
     },
     {
       provide: APP_INTERCEPTOR,
-      useClass: RequestLoggingInterceptor
-    }
+      useClass: RequestLoggingInterceptor,
+    },
   ],
 })
-export class AppModule { }
+export class AppModule {}

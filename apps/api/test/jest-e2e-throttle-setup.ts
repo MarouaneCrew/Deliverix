@@ -1,7 +1,10 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env.test'), override: true });
+dotenv.config({
+  path: path.resolve(__dirname, '../.env.test'),
+  override: true,
+});
 
 // This file needs to test the REAL limits, so override the inflated
 // test-wide values back down to production-realistic numbers.

@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,19 +12,19 @@ import { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(companyId: string, dto: CreateUserDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
-        email: dto.email
-      }
+        email: dto.email,
+      },
     });
 
     if (existingUser) throw new ConflictException('Email already exists');
 
     const hubExists = await this.prisma.hub.findFirst({
-      where: { id: dto.hubId, companyId }
+      where: { id: dto.hubId, companyId },
     });
 
     if (!hubExists) throw new NotFoundException('Hub not found');
@@ -33,8 +38,8 @@ export class UsersService {
         role: dto.role,
         hubId: dto.hubId,
         companyId,
-        fullName: `Test ${dto.role}`
-      }
+        fullName: `Test ${dto.role}`,
+      },
     });
 
     return {
@@ -42,7 +47,7 @@ export class UsersService {
       email: user.email,
       role: user.role,
       isActive: user.isActive,
-      hubId: user.hubId
+      hubId: user.hubId,
     };
   }
 
@@ -55,8 +60,8 @@ export class UsersService {
         role: true,
         isActive: true,
         hubId: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
   }
 
@@ -69,8 +74,8 @@ export class UsersService {
         role: true,
         isActive: true,
         hubId: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     if (!user) throw new NotFoundException('User not found');
@@ -81,7 +86,7 @@ export class UsersService {
   async update(companyId: string, id: string, dto: UpdateUserDto) {
     const data: Prisma.UserUpdateInput = {
       email: dto.email,
-      isActive: dto.isActive
+      isActive: dto.isActive,
     };
 
     if (dto.password) {
@@ -91,15 +96,16 @@ export class UsersService {
     if (dto.hubId !== undefined) {
       const target = await this.prisma.user.findFirst({
         where: { id, companyId },
-        select: { role: true }
+        select: { role: true },
       });
 
       if (!target) throw new NotFoundException('User not found');
 
-      if (target.role !== 'DISPATCHER') throw new BadRequestException('hubId only applies to dispatchers');
+      if (target.role !== 'DISPATCHER')
+        throw new BadRequestException('hubId only applies to dispatchers');
 
       const hubBelongsToCompany = await this.prisma.hub.findFirst({
-        where: { id: dto.hubId, companyId }
+        where: { id: dto.hubId, companyId },
       });
 
       if (!hubBelongsToCompany) throw new NotFoundException('Hub not found');
@@ -117,13 +123,11 @@ export class UsersService {
           role: true,
           isActive: true,
           hubId: true,
-          createdAt: true
-        }
+          createdAt: true,
+        },
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
           throw new NotFoundException('User not found');
         }
@@ -143,11 +147,11 @@ export class UsersService {
         where: { id, companyId },
         data: {
           isActive: false,
-          deletedAt: new Date()
+          deletedAt: new Date(),
         },
         select: {
-          id: true
-        }
+          id: true,
+        },
       });
 
       return user;

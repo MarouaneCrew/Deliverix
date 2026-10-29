@@ -8,7 +8,10 @@ async function bootstrap() {
   const missing = requiredEnvVars.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
-    Logger.error(`Missing required environment variable: ${missing.join(', ')}`, 'Bootstrap');
+    Logger.error(
+      `Missing required environment variable: ${missing.join(', ')}`,
+      'Bootstrap',
+    );
     process.exit(1);
   }
 
@@ -18,8 +21,8 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      transform: true
-    })
+      transform: true,
+    }),
   );
   await app.listen(process.env.PORT ?? 3000);
 }

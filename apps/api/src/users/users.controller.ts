@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '../generated/prisma/enums';
@@ -10,12 +19,15 @@ import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  create(@CurrentUser() actor: Express.User, @Body() createUserDto: CreateUserDto) {
+  create(
+    @CurrentUser() actor: Express.User,
+    @Body() createUserDto: CreateUserDto,
+  ) {
     return this.usersService.create(actor.companyId, createUserDto);
   }
 
@@ -36,7 +48,11 @@ export class UsersController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  update(@CurrentUser() actor: Express.User, @Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(
+    @CurrentUser() actor: Express.User,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.usersService.update(actor.companyId, id, updateUserDto);
   }
 
