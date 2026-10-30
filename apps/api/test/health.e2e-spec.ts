@@ -2,11 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Health (e2e)', () => {
   let app: INestApplication;
-  let prisma: PrismaService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -15,8 +13,6 @@ describe('Health (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     await app.init();
-
-    prisma = app.get(PrismaService);
   });
 
   afterAll(async () => {

@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { HealthModule } from './health/health.module';
+import { NetworkModule } from './network/network.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -24,6 +25,7 @@ import { RequestLoggingInterceptor } from './common/request-logging.interceptor'
     AuthModule,
     UsersModule,
     HealthModule,
+    NetworkModule,
   ],
   controllers: [AppController],
   providers: [

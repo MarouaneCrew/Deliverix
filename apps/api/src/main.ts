@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import type { Express } from 'express';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 
@@ -16,7 +17,7 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule);
-  const expressApp = app.getHttpAdapter().getInstance();
+  const expressApp = app.getHttpAdapter().getInstance() as unknown as Express;
   expressApp.set('trust proxy', 1);
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,6 +25,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  await app.listen(process.env.PORT ?? 3000);
+  void app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();

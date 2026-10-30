@@ -3,7 +3,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { cleanDatabase, createTenant } from './utils/fixtures';
+import { cleanDatabase } from './utils/db-cleanup';
+import { createTenant } from './utils/fixtures';
 
 let tenant: Awaited<ReturnType<typeof createTenant>>;
 

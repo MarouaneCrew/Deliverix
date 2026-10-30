@@ -8,6 +8,23 @@ import { createTenant, createUserFixture, loginAs } from './utils/fixtures';
 
 let tenant: Awaited<ReturnType<typeof createTenant>>;
 
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface ForgotPasswordResponse {
+  message: string;
+  resetToken?: string;
+}
+
+interface AuthMeResponse {
+  userId: string;
+  role: string;
+  companyId: string;
+  hubId: string | null;
+}
+
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -55,7 +72,7 @@ describe('Auth (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email, password })
-        .expect(201); // Nest's default for POST with no @HttpCode override
+        .expect(201);
 
       expect(res.body).toHaveProperty('accessToken');
       expect(res.body).toHaveProperty('refreshToken');
@@ -75,8 +92,7 @@ describe('Auth (e2e)', () => {
         .send({ email: 'nobody@deliverix.test', password: 'anything' })
         .expect(401);
 
-      // Same message whether the email exists or not
-      expect(res.body.message).toBe('Invalid credentials');
+      expect(res.body.message as string).toBe('Invalid credentials');
     });
 
     it('rejects malformed input with 400', async () => {
@@ -117,7 +133,7 @@ describe('Auth (e2e)', () => {
         .post('/auth/login')
         .send({ email, password })
         .expect(201);
-      return res.body as { accessToken: string; refreshToken: string };
+      return res.body as LoginResponse;
     }
 
     it('issues a new token pair from a valid refresh token', async () => {
@@ -130,20 +146,17 @@ describe('Auth (e2e)', () => {
 
       expect(res.body).toHaveProperty('accessToken');
       expect(res.body).toHaveProperty('refreshToken');
-      // Rotation means you get a genuinely new refresh token, not the same one back
-      expect(res.body.refreshToken).not.toBe(refreshToken);
+      expect(res.body.refreshToken as string).not.toBe(refreshToken);
     });
 
     it('rejects reuse of an already-rotated refresh token', async () => {
       const { refreshToken: tokenA } = await login();
 
-      // First use rotates A -> B, and should succeed
       await request(app.getHttpServer())
         .post('/auth/refresh')
         .send({ refreshToken: tokenA })
         .expect(201);
 
-      // Reusing A again should now fail — A was invalidated by the rotation above
       await request(app.getHttpServer())
         .post('/auth/refresh')
         .send({ refreshToken: tokenA })
@@ -158,10 +171,9 @@ describe('Auth (e2e)', () => {
         .send({ refreshToken: tokenA })
         .expect(201);
 
-      // tokenB (from the rotation above) should work fine
       await request(app.getHttpServer())
         .post('/auth/refresh')
-        .send({ refreshToken: rotated.refreshToken })
+        .send({ refreshToken: (rotated as LoginResponse).refreshToken })
         .expect(201);
     });
 
@@ -182,8 +194,6 @@ describe('Auth (e2e)', () => {
     it('rejects an expired refresh token', async () => {
       const { refreshToken } = await login();
 
-      // Reach into the DB directly to simulate time passing,
-      // rather than actually waiting 7 days in a test
       await prisma.user.update({
         where: { email },
         data: { refreshTokenExpiresAt: new Date(Date.now() - 1000) },
@@ -217,7 +227,7 @@ describe('Auth (e2e)', () => {
         .post('/auth/login')
         .send({ email, password })
         .expect(201);
-      return res.body as { accessToken: string; refreshToken: string };
+      return res.body as LoginResponse;
     }
 
     it('clears the refresh session so the old refresh token stops working', async () => {
@@ -228,7 +238,6 @@ describe('Auth (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(201);
 
-      // The whole point of logout: the previously-valid refresh token is now dead
       await request(app.getHttpServer())
         .post('/auth/refresh')
         .send({ refreshToken })
@@ -254,9 +263,6 @@ describe('Auth (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(201);
 
-      // Access token itself is still valid for 15 minutes — logout only kills
-      // the refresh session, not the current access token. Calling logout
-      // again should just be a no-op, not an error.
       await request(app.getHttpServer())
         .post('/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`)
@@ -285,7 +291,7 @@ describe('Auth (e2e)', () => {
         .post('/auth/login')
         .send({ email, password: pwd })
         .expect(201);
-      return res.body as { accessToken: string; refreshToken: string };
+      return res.body as LoginResponse;
     }
 
     it('changes the password when current password is correct', async () => {
@@ -297,13 +303,11 @@ describe('Auth (e2e)', () => {
         .send({ currentPassword: password, newPassword: 'newpassword456' })
         .expect(201);
 
-      // The real proof: the new password actually works for a fresh login
       await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email, password: 'newpassword456' })
         .expect(201);
 
-      // ...and the old one no longer does
       await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email, password })
@@ -322,7 +326,6 @@ describe('Auth (e2e)', () => {
         })
         .expect(401);
 
-      // Password must be unchanged — original still logs in
       await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email, password })
@@ -346,7 +349,7 @@ describe('Auth (e2e)', () => {
         .expect(400);
     });
 
-    it('does NOT invalidate the existing refresh session (documented design decision)', async () => {
+    it('does NOT invalidate the existing refresh session', async () => {
       const { accessToken, refreshToken } = await login();
 
       await request(app.getHttpServer())
@@ -355,22 +358,13 @@ describe('Auth (e2e)', () => {
         .send({ currentPassword: password, newPassword: 'newpassword456' })
         .expect(201);
 
-      // The refresh token from before the password change should still work —
-      // this is the deliberate trade-off documented in the Aug 18 progress notes:
-      // an attacker already holding a valid session isn't locked out by a
-      // password change alone in a single-session model.
       await request(app.getHttpServer())
         .post('/auth/refresh')
         .send({ refreshToken })
         .expect(201);
     });
 
-    it('still works for a healthy, active account (regression test for the deletedAt inversion bug)', async () => {
-      // This test exists specifically because of the !user.deletedAt bug caught
-      // in review: `!user || !user.isActive || !user.deletedAt` was wrong because
-      // !null is true for every healthy account, which would have rejected
-      // 100% of legitimate change-password attempts. This is the exact path
-      // that bug would have silently broken.
+    it('still works for a healthy, active account', async () => {
       const { accessToken } = await login();
 
       await request(app.getHttpServer())
@@ -397,12 +391,14 @@ describe('Auth (e2e)', () => {
       });
     });
 
-    async function forgotPassword(targetEmail = email) {
+    async function forgotPassword(
+      targetEmail = email,
+    ): Promise<ForgotPasswordResponse> {
       const res = await request(app.getHttpServer())
         .post('/auth/forgot-password')
         .send({ email: targetEmail })
         .expect(201);
-      return res.body as { message: string; resetToken?: string };
+      return res.body as ForgotPasswordResponse;
     }
 
     it('happy path: forgot -> reset -> old password rejected -> new password works', async () => {
@@ -425,20 +421,17 @@ describe('Auth (e2e)', () => {
         .expect(201);
     });
 
-    it('returns 200 with a generic message for an unknown email, and leaks no token', async () => {
+    it('returns 200 with a generic message for an unknown email', async () => {
       const body = await forgotPassword('nobody@deliverix.test');
 
       expect(body.resetToken).toBeUndefined();
       expect(body.message).toBeDefined();
-      // Same message shape as the real-email case — no way to distinguish
     });
 
-    it('confirms the known-email response gives no extra signal beyond the token itself', async () => {
+    it('confirms the known-email response gives no extra signal', async () => {
       const knownBody = await forgotPassword(email);
       const unknownBody = await forgotPassword('nobody-else@deliverix.test');
 
-      // The human-readable message is identical either way; only a real,
-      // non-production-only reset token differs, and that's expected/intended
       expect(knownBody.message).toBe(unknownBody.message);
     });
 
@@ -477,12 +470,12 @@ describe('Auth (e2e)', () => {
         .expect(401);
     });
 
-    it('invalidates the existing refresh session on reset (unlike change-password)', async () => {
+    it('invalidates the existing refresh session on reset', async () => {
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email, password })
         .expect(201);
-      const { refreshToken } = loginRes.body as { refreshToken: string };
+      const { refreshToken } = loginRes.body as LoginResponse;
 
       const { resetToken } = await forgotPassword();
 
@@ -491,14 +484,13 @@ describe('Auth (e2e)', () => {
         .send({ token: resetToken, newPassword: 'securednow123' })
         .expect(201);
 
-      // Reset assumes possible compromise -> old refresh token must die
       await request(app.getHttpServer())
         .post('/auth/refresh')
         .send({ refreshToken })
         .expect(401);
     });
 
-    it('gives no usable reset token for a deactivated account, though forgot-password still returns 200', async () => {
+    it('gives no usable reset token for a deactivated account', async () => {
       await prisma.user.update({
         where: { email },
         data: { isActive: false, deletedAt: new Date() },
@@ -517,7 +509,7 @@ describe('Auth (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/auth/reset-password')
-        .send({ token: 'abc' }) // missing newPassword
+        .send({ token: 'abc' })
         .expect(400);
     });
   });
@@ -580,7 +572,6 @@ describe('Auth (e2e)', () => {
   });
 
   it('GET /auth/me returns user payload with company and hub after login', async () => {
-    // Create an ADMIN user and log in
     await prisma.user.create({
       data: {
         email: 'e2e-me@deliverix.test',
@@ -615,7 +606,6 @@ describe('Auth (e2e)', () => {
   });
 });
 
-// Small local helper — avoids importing bcrypt config decisions into the test file
 async function hashForTest(password: string): Promise<string> {
   const bcrypt = await import('bcryptjs');
   return bcrypt.hash(password, 10);

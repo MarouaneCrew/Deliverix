@@ -61,7 +61,7 @@ export async function createUserFixture(
     password?: string;
   },
 ) {
-  const email =
+  const email: string =
     emailOverride ??
     `e2e-${role.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2)}@deliverix.test`;
   const hashed = await hash(password, 4);
@@ -77,7 +77,7 @@ export async function createUserFixture(
     },
   });
 
-  return { user, email, password };
+  return { user, email, password } as const;
 }
 
 export async function loginAs(

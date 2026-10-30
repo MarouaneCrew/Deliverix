@@ -5,9 +5,9 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
+import type { Request, Response } from 'express';
 
 @Injectable()
 export class RequestLoggingInterceptor implements NestInterceptor {
@@ -15,8 +15,8 @@ export class RequestLoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const ctx = context.switchToHttp();
-    const req = ctx.getRequest();
-    const res = ctx.getResponse();
+    const req = ctx.getRequest<Request>();
+    const res = ctx.getResponse<Response>();
 
     const headerId = req.headers['x-request-id'];
     const requestId =
