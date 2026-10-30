@@ -7,10 +7,24 @@ import { CreateHubDto } from './dto/create-hub.dto';
 import { UpdateHubDto } from './dto/update-hub.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Hubs service - manages company-scoped warehouse locations.
+ * Each hub belongs to exactly one company and one city.
+ * Used as assignment points for dispatchers and drivers.
+ */
 @Injectable()
 export class HubsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Creates a new hub within the specified company.
+   * Validates that the city exists and enforces unique hub name per company.
+   * @param companyId - Company ID (tenant scoping)
+   * @param dto - Hub data (cityId, name, address optional)
+   * @returns Created hub with city details
+   * @throws NotFoundException if city not found
+   * @throws ConflictException if hub with same name already exists for this company
+   */
   async create(companyId: string, dto: CreateHubDto) {
     const city = await this.prisma.city.findUnique({
       where: { id: dto.cityId },
@@ -58,6 +72,11 @@ export class HubsService {
     }
   }
 
+  /**
+   * Lists all hubs for the specified company, ordered alphabetically by name.
+   * @param companyId - Company ID (tenant scoping)
+   * @returns Array of hubs with city details
+   */
   async findAll(companyId: string) {
     return this.prisma.hub.findMany({
       where: { companyId },
@@ -81,6 +100,14 @@ export class HubsService {
     });
   }
 
+  /**
+   * Retrieves a specific hub by ID within the company scope.
+   * Returns 404 if hub doesn't exist or belongs to another company.
+   * @param companyId - Company ID (tenant scoping)
+   * @param id - Hub ID
+   * @returns Hub with city details
+   * @throws NotFoundException if hub not found in this company
+   */
   async findOne(companyId: string, id: string) {
     const hub = await this.prisma.hub.findFirst({
       where: { id, companyId },
@@ -107,6 +134,16 @@ export class HubsService {
     return hub;
   }
 
+  /**
+   * Updates a hub's details.
+   * Validates that the hub belongs to the company and checks for name conflicts.
+   * @param companyId - Company ID (tenant scoping)
+   * @param id - Hub ID to update
+   * @param dto - Updated hub data (name, address, isActive optional)
+   * @returns Updated hub with city details
+   * @throws NotFoundException if hub not found in this company
+   * @throws ConflictException if new name conflicts with another hub in the same company
+   */
   async update(companyId: string, id: string, dto: UpdateHubDto) {
     const existingHub = await this.prisma.hub.findFirst({
       where: { id, companyId },

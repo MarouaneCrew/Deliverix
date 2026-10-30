@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { HealthModule } from './health/health.module';
 import { NetworkModule } from './network/network.module';
+import { MerchantsModule } from './merchants/merchants.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -26,6 +27,7 @@ import { RequestLoggingInterceptor } from './common/request-logging.interceptor'
     UsersModule,
     HealthModule,
     NetworkModule,
+    MerchantsModule,
   ],
   controllers: [AppController],
   providers: [

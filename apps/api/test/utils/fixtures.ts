@@ -1,25 +1,27 @@
-import { PrismaClient } from '../../src/generated/prisma/client';
 import { hash } from 'bcryptjs';
-import request from 'supertest';
+import { PrismaClient } from '../src/generated/prisma/client';
 import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import type { User, City, Hub, Company } from '../src/generated/prisma/client';
 
-export async function createCompany(prisma: PrismaClient, name = 'Test Co') {
-  return prisma.company.upsert({
-    where: { id: 'test-company-' + name },
-    create: { id: 'test-company-' + name, name },
-    update: { name },
-  });
+export function createCompany(prisma: PrismaClient, name = 'Test Co') {
+  return prisma.company.create({
+    data: { name },
+    select: { id: true, name: true },
+  }) as Promise<Company>;
 }
 
-export async function createCity(prisma: PrismaClient, name = 'Testville') {
-  return prisma.city.upsert({
-    where: { name },
-    create: { id: 'test-city-' + name, name },
-    update: { name },
-  });
+export function createCity(
+  prisma: PrismaClient,
+  name = `Testville-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+) {
+  return prisma.city.create({
+    data: { name },
+    select: { id: true, name: true },
+  }) as Promise<City>;
 }
 
-export async function createHub(
+export function createHub(
   prisma: PrismaClient,
   {
     companyId,
@@ -27,20 +29,18 @@ export async function createHub(
     name = 'Test Hub',
   }: { companyId: string; cityId: string; name?: string },
 ) {
-  return prisma.hub.upsert({
-    where: { id: 'test-hub-' + name },
-    create: { id: 'test-hub-' + name, name, companyId, cityId },
-    update: { name },
-  });
+  return prisma.hub.create({
+    data: { companyId, cityId, name },
+    select: { id: true, name: true, cityId: true },
+  }) as Promise<Hub>;
 }
 
-export async function createTenant(prisma: PrismaClient, suffix = '') {
-  const company = await createCompany(prisma, `Test Co${suffix}`);
-  const city = await createCity(prisma, `Testville${suffix}`);
+export async function createTenant(prisma: PrismaClient) {
+  const company = await createCompany(prisma);
+  const city = await createCity(prisma);
   const hub = await createHub(prisma, {
     companyId: company.id,
     cityId: city.id,
-    name: `Test Hub${suffix}`,
   });
   return { company, city, hub };
 }
@@ -51,33 +51,41 @@ export async function createUserFixture(
     companyId,
     role,
     hubId = null,
-    email: emailOverride,
+    email,
     password = 'password123',
   }: {
     companyId: string;
-    role: 'ADMIN' | 'DISPATCHER' | 'DRIVER';
+    role: string;
     hubId?: string | null;
-    emailOverride?: string;
+    email?: string;
     password?: string;
   },
 ) {
-  const email: string =
-    emailOverride ??
+  const defaultEmail =
+    email ||
     `e2e-${role.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2)}@deliverix.test`;
-  const hashed = await hash(password, 4);
+  const passwordHash = await hash(password, 4);
 
   const user = await prisma.user.create({
     data: {
-      email,
-      passwordHash: hashed,
-      role: role,
+      email: defaultEmail,
+      passwordHash,
+      fullName: 'Test User',
+      role: role as any,
       companyId,
       hubId,
-      fullName: `Test ${role}`,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      companyId: true,
+      hubId: true,
     },
   });
 
-  return { user, email, password } as const;
+  return { user, email: defaultEmail, password };
 }
 
 export async function loginAs(
@@ -89,6 +97,5 @@ export async function loginAs(
     .post('/auth/login')
     .send({ email, password })
     .expect(201);
-
   return res.body as { accessToken: string; refreshToken: string };
 }
