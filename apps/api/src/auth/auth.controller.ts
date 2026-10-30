@@ -7,20 +7,17 @@
  * Token revocation: When a user is deactivated or soft-deleted, their existing
  * access tokens are immediately rejected via JwtStrategy validation on every request.
  */
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { CurrentUser } from './decorators/current-user.decorator';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { Throttle } from '@nestjs/throttler';
-import {
-  FORGOT_PASSWORD_THROTTLE,
-  LOGIN_THROTTLE,
-} from './constants/throttle.constants';
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common"
+import type { AuthService } from "./auth.service"
+import type { LoginDto } from "./dto/login.dto"
+import { JwtAuthGuard } from "./guards/jwt-auth.guard"
+import type { RefreshTokenDto } from "./dto/refresh-token.dto"
+import { CurrentUser } from "./decorators/current-user.decorator"
+import type { ChangePasswordDto } from "./dto/change-password.dto"
+import type { ForgotPasswordDto } from "./dto/forgot-password.dto"
+import type { ResetPasswordDto } from "./dto/reset-password.dto"
+import { Throttle } from "@nestjs/throttler"
+import { FORGOT_PASSWORD_THROTTLE, LOGIN_THROTTLE } from "./constants/throttle.constants"
 
 /**
  * Refreshes the access token using a valid refresh token.
@@ -30,13 +27,13 @@ import {
  * @returns New access token and refresh token
  * @throws UnauthorizedException if refresh token is invalid or expired
  */
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('refresh')
+  @Post("refresh")
   async refreshAccessToken(@Body() token: RefreshTokenDto) {
-    return this.authService.refreshAccessToken(token.refreshToken);
+    return this.authService.refreshAccessToken(token.refreshToken)
   }
 
   /**
@@ -48,15 +45,12 @@ export class AuthController {
    * @throws UnauthorizedException if credentials are invalid
    * @throws TooManyRequestsException if rate limit exceeded
    */
-  @Post('login')
+  @Post("login")
   @Throttle(LOGIN_THROTTLE)
   async login(@Body() loginDto: LoginDto) {
-    const user = await this.authService.validateUser(
-      loginDto.email,
-      loginDto.password,
-    );
+    const user = await this.authService.validateUser(loginDto.email, loginDto.password)
 
-    return this.authService.login(user);
+    return this.authService.login(user)
   }
 
   /**
@@ -68,17 +62,10 @@ export class AuthController {
    * @returns Success message
    * @throws UnauthorizedException if user not authenticated or password incorrect
    */
-  @Post('change-password')
+  @Post("change-password")
   @UseGuards(JwtAuthGuard)
-  async changePassword(
-    @CurrentUser() user: Express.User,
-    @Body() dto: ChangePasswordDto,
-  ) {
-    return this.authService.changePassword(
-      user.userId,
-      dto.currentPassword,
-      dto.newPassword,
-    );
+  async changePassword(@CurrentUser() user: Express.User, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user.userId, dto.currentPassword, dto.newPassword)
   }
 
   /**
@@ -90,10 +77,10 @@ export class AuthController {
    * @returns Generic success message (or reset token in dev)
    * @throws TooManyRequestsException if rate limit exceeded
    */
-  @Post('forgot-password')
+  @Post("forgot-password")
   @Throttle(FORGOT_PASSWORD_THROTTLE)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(dto.email);
+    return this.authService.forgotPassword(dto.email)
   }
 
   /**
@@ -104,9 +91,9 @@ export class AuthController {
    * @returns Success message
    * @throws UnauthorizedException if token is invalid or expired
    */
-  @Post('reset-password')
+  @Post("reset-password")
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto.token, dto.newPassword);
+    return this.authService.resetPassword(dto.token, dto.newPassword)
   }
 
   /**
@@ -115,10 +102,10 @@ export class AuthController {
    * @param user - Authenticated user (from JWT token)
    * @returns Success message
    */
-  @Post('logout')
+  @Post("logout")
   @UseGuards(JwtAuthGuard)
   async logout(@CurrentUser() user: Express.User) {
-    return this.authService.logout(user.userId);
+    return this.authService.logout(user.userId)
   }
 
   /**
@@ -128,9 +115,9 @@ export class AuthController {
    * @param user - Authenticated user (from JWT token, validated by JwtStrategy)
    * @returns User profile object
    */
-  @Get('me')
+  @Get("me")
   @UseGuards(JwtAuthGuard)
   getMe(@CurrentUser() user: Express.User) {
-    return user;
+    return user
   }
 }

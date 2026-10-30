@@ -1,83 +1,78 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { cleanDatabase } from './utils/db-cleanup';
-import { createTenant } from './utils/fixtures';
+import { Test, type TestingModule } from "@nestjs/testing"
+import { type INestApplication, ValidationPipe } from "@nestjs/common"
+import request from "supertest"
+import { AppModule } from "../src/app.module"
+import { PrismaService } from "../src/prisma/prisma.service"
+import { cleanDatabase } from "./utils/db-cleanup"
+import { createTenant } from "./utils/fixtures"
 
-let tenant: Awaited<ReturnType<typeof createTenant>>;
+let tenant: Awaited<ReturnType<typeof createTenant>>
 
-describe('Rate limiting (e2e)', () => {
-  let app: INestApplication;
-  let prisma: PrismaService;
+describe("Rate limiting (e2e)", () => {
+  let app: INestApplication
+  let prisma: PrismaService
 
   beforeEach(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    }).compile()
 
-    app = moduleRef.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
-    await app.init();
+    app = moduleRef.createNestApplication()
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
+    await app.init()
 
-    prisma = app.get(PrismaService);
-    await cleanDatabase(prisma);
-    tenant = await createTenant(prisma);
-  });
+    prisma = app.get(PrismaService)
+    await cleanDatabase(prisma)
+    tenant = await createTenant(prisma)
+  })
 
   afterEach(async () => {
-    await app.close();
-  });
+    await app.close()
+  })
 
-  it('blocks login after 5 rapid attempts in the window', async () => {
-    const email = 'e2e-throttle@deliverix.test';
+  it("blocks login after 5 rapid attempts in the window", async () => {
+    const email = "e2e-throttle@deliverix.test"
 
     for (let i = 0; i < 5; i++) {
       await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email, password: 'wrong' })
-        .expect(401);
+        .post("/auth/login")
+        .send({ email, password: "wrong" })
+        .expect(401)
     }
 
     await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email, password: 'wrong' })
-      .expect(429);
-  });
+      .post("/auth/login")
+      .send({ email, password: "wrong" })
+      .expect(429)
+  })
 
-  it('allows a single legitimate attempt through (no false positive)', async () => {
-    const email = 'e2e-throttle-legit@deliverix.test';
-    const password = 'password123';
+  it("allows a single legitimate attempt through (no false positive)", async () => {
+    const email = "e2e-throttle-legit@deliverix.test"
+    const password = "password123"
 
     await prisma.user.create({
       data: {
         email,
         passwordHash: await hashForTest(password),
-        role: 'ADMIN',
-        fullName: 'Test ADMIN',
+        role: "ADMIN",
+        fullName: "Test ADMIN",
         company: { connect: { id: tenant.company.id } },
       },
-    });
+    })
 
-    await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email, password })
-      .expect(201);
-  });
+    await request(app.getHttpServer()).post("/auth/login").send({ email, password }).expect(201)
+  })
 
-  it('blocks an unthrottled route after the global default (20/min)', async () => {
+  it("blocks an unthrottled route after the global default (20/min)", async () => {
     for (let i = 0; i < 20; i++) {
-      await request(app.getHttpServer()).get('/auth/me').expect(401);
+      await request(app.getHttpServer()).get("/auth/me").expect(401)
     }
 
-    await request(app.getHttpServer()).get('/auth/me').expect(429);
-  }, 20000);
-});
+    await request(app.getHttpServer()).get("/auth/me").expect(429)
+  }, 20000)
+})
 
 async function hashForTest(password: string): Promise<string> {
-  const bcrypt = await import('bcryptjs');
-  return bcrypt.hash(password, 10);
+  const bcrypt = await import("bcryptjs")
+  return bcrypt.hash(password, 10)
 }

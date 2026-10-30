@@ -3,12 +3,12 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcryptjs';
-import { Prisma } from '../generated/prisma/client';
+} from "@nestjs/common"
+import type { CreateUserDto } from "./dto/create-user.dto"
+import type { UpdateUserDto } from "./dto/update-user.dto"
+import type { UserRepository } from "../common/repositories/impl/user.repository"
+import * as bcrypt from "bcryptjs"
+import type { User, UserRole } from "@generated/prisma/client"
 
 /**
  * Users service - manages company-scoped staff user accounts.
@@ -17,7 +17,7 @@ import { Prisma } from '../generated/prisma/client';
  */
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   /**
    * Creates a new staff user account within the specified company.
@@ -30,32 +30,24 @@ export class UsersService {
    * @throws NotFoundException if hub not found in this company
    */
   async create(companyId: string, dto: CreateUserDto) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: {
-        email: dto.email,
-      },
-    });
+    const existingUser = await this.userRepository.findByEmail(dto.email)
 
-    if (existingUser) throw new ConflictException('Email already exists');
+    if (existingUser) throw new ConflictException("Email already exists")
 
-    const hubExists = await this.prisma.hub.findFirst({
-      where: { id: dto.hubId, companyId },
-    });
+    const hub = await this.userRepository.findOne(companyId, dto.hubId)
 
-    if (!hubExists) throw new NotFoundException('Hub not found');
+    if (!hub) throw new NotFoundException("Hub not found")
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, 10)
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        role: dto.role,
-        hubId: dto.hubId,
-        companyId,
-        fullName: `Test ${dto.role}`,
-      },
-    });
+    const user = await this.userRepository.create({
+      email: dto.email,
+      passwordHash,
+      role: dto.role,
+      hubId: dto.hubId,
+      companyId,
+      fullName: `Test ${dto.role}`,
+    })
 
     return {
       id: user.id,
@@ -63,7 +55,7 @@ export class UsersService {
       role: user.role,
       isActive: user.isActive,
       hubId: user.hubId,
-    };
+    }
   }
 
   /**
@@ -72,17 +64,16 @@ export class UsersService {
    * @returns Array of users with id, email, role, isActive, hubId, createdAt
    */
   async findAll(companyId: string) {
-    return this.prisma.user.findMany({
-      where: { companyId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        isActive: true,
-        hubId: true,
-        createdAt: true,
-      },
-    });
+    const users = await this.userRepository.findAllByCompany(companyId)
+
+    return users.map(u => ({
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      isActive: u.isActive,
+      hubId: u.hubId,
+      createdAt: u.createdAt,
+    }))
   }
 
   /**
@@ -94,21 +85,18 @@ export class UsersService {
    * @throws NotFoundException if user not found in this company
    */
   async findOne(companyId: string, id: string) {
-    const user = await this.prisma.user.findFirst({
-      where: { id, companyId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        isActive: true,
-        hubId: true,
-        createdAt: true,
-      },
-    });
+    const user = await this.userRepository.findOne(companyId, id)
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found")
 
-    return user;
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      hubId: user.hubId,
+      createdAt: user.createdAt,
+    }
   }
 
   /**
@@ -125,60 +113,48 @@ export class UsersService {
    * @throws ConflictException if email conflicts with another user
    */
   async update(companyId: string, id: string, dto: UpdateUserDto) {
-    const data: Prisma.UserUpdateInput = {
+    const target = await this.userRepository.findOne(companyId, id)
+
+    if (!target) throw new NotFoundException("User not found")
+
+    const data: Partial<User> = {
       email: dto.email,
       isActive: dto.isActive,
-    };
+    }
 
     if (dto.password) {
-      data.passwordHash = await bcrypt.hash(dto.password, 10);
+      data.passwordHash = await bcrypt.hash(dto.password, 10)
     }
 
     if (dto.hubId !== undefined) {
-      const target = await this.prisma.user.findFirst({
-        where: { id, companyId },
-        select: { role: true },
-      });
+      if (target.role !== "DISPATCHER")
+        throw new BadRequestException("hubId only applies to dispatchers")
 
-      if (!target) throw new NotFoundException('User not found');
+      const hubExists = await this.userRepository.findOne(companyId, dto.hubId)
+      if (!hubExists) throw new NotFoundException("Hub not found")
 
-      if (target.role !== 'DISPATCHER')
-        throw new BadRequestException('hubId only applies to dispatchers');
-
-      const hubBelongsToCompany = await this.prisma.hub.findFirst({
-        where: { id: dto.hubId, companyId },
-      });
-
-      if (!hubBelongsToCompany) throw new NotFoundException('Hub not found');
-
-      data.hub = { connect: { id: dto.hubId } };
+      data.hubId = dto.hubId
     }
 
     try {
-      return await this.prisma.user.update({
-        where: { id, companyId },
-        data,
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          isActive: true,
-          hubId: true,
-          createdAt: true,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('User not found');
-        }
+      const user = await this.userRepository.update(companyId, id, data)
 
-        if (error.code === 'P2002') {
-          throw new ConflictException('Email already exists');
+      return {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        hubId: user.hubId,
+        createdAt: user.createdAt,
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        // Check for unique constraint violation
+        if ("code" in error && (error as { code: string }).code === "P2002") {
+          throw new ConflictException("Email already exists")
         }
       }
-
-      throw error;
+      throw error
     }
   }
 
@@ -193,27 +169,23 @@ export class UsersService {
    */
   async remove(companyId: string, id: string) {
     try {
-      const user = await this.prisma.user.update({
-        where: { id, companyId },
-        data: {
-          isActive: false,
-          deletedAt: new Date(),
-        },
-        select: {
-          id: true,
-        },
-      });
+      await this.userRepository.update(companyId, id, {
+        isActive: false,
+        deletedAt: new Date(),
+      })
 
-      return user;
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new NotFoundException('User not found');
+      const user = await this.userRepository.findOne(companyId, id)
+
+      if (!user) throw new NotFoundException("User not found")
+
+      return { id: user.id }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if ("code" in error && (error as { code: string }).code === "P2025") {
+          throw new NotFoundException("User not found")
+        }
       }
-
-      throw error;
+      throw error
     }
   }
 }

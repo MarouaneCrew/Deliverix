@@ -8,7 +8,7 @@
  * - Email must be a valid email format
  * - Password must be at least 8 characters
  */
-import { IsEmail, MinLength } from 'class-validator';
+import { IsEmail, MinLength } from "class-validator"
 
 export class CreateMerchantAccountDto {
   /**
@@ -16,12 +16,12 @@ export class CreateMerchantAccountDto {
    * Must be valid email format and globally unique.
    */
   @IsEmail()
-  email: string;
+  email: string
 
   /**
    * Password for the merchant login account.
    * Minimum 8 characters for security.
    */
   @MinLength(8)
-  password: string;
+  password: string
 }

@@ -7,15 +7,8 @@
  * - address: optional string, max 255 chars
  * - isActive: optional boolean
  */
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  MaxLength,
-  Matches,
-  IsBoolean,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, Matches, IsBoolean } from "class-validator"
+import { Transform } from "class-transformer"
 
 export class UpdateMerchantDto {
   /**
@@ -26,10 +19,8 @@ export class UpdateMerchantDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  name?: string;
+  @Transform(({ value }: { value: unknown }) => (typeof value === "string" ? value.trim() : value))
+  name?: string
 
   /**
    * Updated city ID (optional).
@@ -38,7 +29,7 @@ export class UpdateMerchantDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  cityId?: string;
+  cityId?: string
 
   /**
    * Updated business phone number (optional).
@@ -47,7 +38,7 @@ export class UpdateMerchantDto {
    */
   @IsOptional()
   @Matches(/^\+?[0-9]{8,15}$/)
-  phone?: string;
+  phone?: string
 
   /**
    * Updated business address (optional).
@@ -56,7 +47,7 @@ export class UpdateMerchantDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  address?: string;
+  address?: string
 
   /**
    * Updated active status (optional).
@@ -64,5 +55,5 @@ export class UpdateMerchantDto {
    */
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  isActive?: boolean
 }

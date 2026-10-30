@@ -1,17 +1,23 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateMerchantDto } from './dto/create-merchant.dto';
-import { UpdateMerchantDto } from './dto/update-merchant.dto';
-import { CreateMerchantAccountDto } from './dto/create-merchant-account.dto';
-import { UserRole } from '../generated/prisma/enums';
+import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
+import { Inject } from "@nestjs/common"
+import type { MerchantRepository } from "../common/repositories/impl/merchant.repository"
+import type { CityRepository } from "../common/repositories/impl/city.repository"
+import type { UserRepository } from "../common/repositories/impl/user.repository"
+import type { CreateMerchantDto } from "./dto/create-merchant.dto"
+import type { UpdateMerchantDto } from "./dto/update-merchant.dto"
+import type { CreateMerchantAccountDto } from "./dto/create-merchant-account.dto"
+import { UserRole } from "../generated/prisma/enums"
 
 @Injectable()
 export class MerchantsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject("MerchantRepository")
+    private readonly merchantRepository: MerchantRepository,
+    @Inject("CityRepository")
+    private readonly cityRepository: CityRepository,
+    @Inject("UserRepository")
+    private readonly userRepository: UserRepository,
+  ) {}
 
   /**
    * Creates a new merchant business record (without login).
@@ -19,39 +25,33 @@ export class MerchantsService {
    * ADMIN and DISPATCHER can create merchants for their company.
    */
   async create(companyId: string, dto: CreateMerchantDto) {
-    const city = await this.prisma.city.findUnique({
-      where: { id: dto.cityId },
-    });
+    const city = await this.cityRepository.findOne(dto.cityId)
     if (!city) {
-      throw new NotFoundException('City not found');
+      throw new NotFoundException("City not found")
     }
 
-    const merchant = await this.prisma.merchant.create({
-      data: {
-        companyId,
-        cityId: dto.cityId,
-        name: dto.name,
-        phone: dto.phone,
-        address: dto.address,
-        userId: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        cityId: true,
-        city: { select: { id: true, name: true } },
-        isActive: true,
-        userId: true,
-        createdAt: true,
-      },
-    });
+    const merchant = await this.merchantRepository.create({
+      companyId,
+      cityId: dto.cityId,
+      name: dto.name,
+      phone: dto.phone,
+      address: dto.address,
+      userId: null as string | null,
+    })
 
+    const m = merchant as any
     return {
-      ...merchant,
-      hasLogin: merchant.userId !== null,
-    };
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      address: m.address,
+      cityId: m.cityId,
+      city: m.city ? { id: m.city.id, name: m.city.name } : null,
+      isActive: m.isActive,
+      userId: m.userId,
+      createdAt: m.createdAt,
+      hasLogin: m.userId !== null,
+    }
   }
 
   /**
@@ -59,29 +59,20 @@ export class MerchantsService {
    * Returns merchant business data with hasLogin flag indicating if a user account exists.
    */
   async findAll(companyId: string) {
-    const merchants = await this.prisma.merchant.findMany({
-      where: {
-        companyId,
-        deletedAt: null,
-      },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        cityId: true,
-        city: { select: { id: true, name: true } },
-        isActive: true,
-        userId: true,
-        createdAt: true,
-      },
-    });
+    const merchants = await this.merchantRepository.findAllByCompany(companyId)
 
-    return merchants.map((m) => ({
-      ...m,
+    return merchants.map(m => ({
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      address: m.address,
+      cityId: m.cityId,
+      city: (m as any).city ? { id: (m as any).city.id, name: (m as any).city.name } : null,
+      isActive: m.isActive,
+      userId: m.userId,
+      createdAt: m.createdAt,
       hasLogin: m.userId !== null,
-    }));
+    }))
   }
 
   /**
@@ -89,33 +80,25 @@ export class MerchantsService {
    * Returns 404 if merchant doesn't exist or belongs to another company.
    */
   async findOne(companyId: string, id: string) {
-    const merchant = await this.prisma.merchant.findFirst({
-      where: {
-        id,
-        companyId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        cityId: true,
-        city: { select: { id: true, name: true } },
-        isActive: true,
-        userId: true,
-        createdAt: true,
-      },
-    });
+    const merchant = await this.merchantRepository.findOne(companyId, id)
 
     if (!merchant) {
-      throw new NotFoundException('Merchant not found');
+      throw new NotFoundException("Merchant not found")
     }
 
+    const m = merchant as any
     return {
-      ...merchant,
-      hasLogin: merchant.userId !== null,
-    };
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      address: m.address,
+      cityId: m.cityId,
+      city: m.city ? { id: m.city.id, name: m.city.name } : null,
+      isActive: m.isActive,
+      userId: m.userId,
+      createdAt: m.createdAt,
+      hasLogin: m.userId !== null,
+    }
   }
 
   /**
@@ -123,33 +106,25 @@ export class MerchantsService {
    * Used by merchant users to access their own business data via GET /merchants/me.
    */
   async findMyMerchant(companyId: string, userId: string) {
-    const merchant = await this.prisma.merchant.findFirst({
-      where: {
-        companyId,
-        userId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        cityId: true,
-        city: { select: { id: true, name: true } },
-        isActive: true,
-        userId: true,
-        createdAt: true,
-      },
-    });
+    const merchant = await this.merchantRepository.findByUserId(userId)
 
-    if (!merchant) {
-      throw new NotFoundException('Merchant not found');
+    if (!merchant || merchant.companyId !== companyId) {
+      throw new NotFoundException("Merchant not found")
     }
 
+    const m = merchant as any
     return {
-      ...merchant,
-      hasLogin: merchant.userId !== null,
-    };
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      address: m.address,
+      cityId: m.cityId,
+      city: m.city ? { id: m.city.id, name: m.city.name } : null,
+      isActive: m.isActive,
+      userId: m.userId,
+      createdAt: m.createdAt,
+      hasLogin: m.userId !== null,
+    }
   }
 
   /**
@@ -157,39 +132,26 @@ export class MerchantsService {
    * Enforces that merchant users can only access their own merchant record (userId must match).
    * Returns 404 if the merchant doesn't belong to the requesting user.
    */
-  async findOneMerchantUser(
-    companyId: string,
-    actorUserId: string,
-    id: string,
-  ) {
-    const merchant = await this.prisma.merchant.findFirst({
-      where: {
-        id,
-        companyId,
-        userId: actorUserId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        cityId: true,
-        city: { select: { id: true, name: true } },
-        isActive: true,
-        userId: true,
-        createdAt: true,
-      },
-    });
+  async findOneMerchantUser(companyId: string, actorUserId: string, id: string) {
+    const merchant = await this.merchantRepository.findOne(companyId, id)
 
-    if (!merchant) {
-      throw new NotFoundException('Merchant not found');
+    if (!merchant || merchant.userId !== actorUserId) {
+      throw new NotFoundException("Merchant not found")
     }
 
+    const m = merchant as any
     return {
-      ...merchant,
-      hasLogin: merchant.userId !== null,
-    };
+      id: m.id,
+      name: m.name,
+      phone: m.phone,
+      address: m.address,
+      cityId: m.cityId,
+      city: m.city ? { id: m.city.id, name: m.city.name } : null,
+      isActive: m.isActive,
+      userId: m.userId,
+      createdAt: m.createdAt,
+      hasLogin: m.userId !== null,
+    }
   }
 
   /**
@@ -198,53 +160,41 @@ export class MerchantsService {
    * Validates that the new city exists if cityId is being changed.
    */
   async update(companyId: string, id: string, dto: UpdateMerchantDto) {
-    const merchant = await this.prisma.merchant.findFirst({
-      where: {
-        id,
-        companyId,
-        deletedAt: null,
-      },
-    });
+    const merchant = await this.merchantRepository.findOne(companyId, id)
 
     if (!merchant) {
-      throw new NotFoundException('Merchant not found');
+      throw new NotFoundException("Merchant not found")
     }
 
     if (dto.cityId) {
-      const city = await this.prisma.city.findUnique({
-        where: { id: dto.cityId },
-      });
+      const city = await this.cityRepository.findOne(dto.cityId)
       if (!city) {
-        throw new NotFoundException('City not found');
+        throw new NotFoundException("City not found")
       }
     }
 
-    const updatedMerchant = await this.prisma.merchant.update({
-      where: { id, companyId },
-      data: {
-        name: dto.name,
-        cityId: dto.cityId,
-        phone: dto.phone,
-        address: dto.address,
-        isActive: dto.isActive,
-      },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        address: true,
-        cityId: true,
-        city: { select: { id: true, name: true } },
-        isActive: true,
-        userId: true,
-        createdAt: true,
-      },
-    });
+    const updatedMerchant = await this.merchantRepository.update(companyId, id, {
+      name: dto.name,
+      cityId: dto.cityId,
+      phone: dto.phone,
+      address: dto.address,
+      isActive: dto.isActive,
+    })
 
     return {
-      ...updatedMerchant,
+      id: updatedMerchant.id,
+      name: updatedMerchant.name,
+      phone: updatedMerchant.phone,
+      address: updatedMerchant.address,
+      cityId: updatedMerchant.cityId,
+      city: (updatedMerchant as any).city
+        ? { id: (updatedMerchant as any).city.id, name: (updatedMerchant as any).city.name }
+        : null,
+      isActive: updatedMerchant.isActive,
+      userId: updatedMerchant.userId,
+      createdAt: updatedMerchant.createdAt,
       hasLogin: updatedMerchant.userId !== null,
-    };
+    }
   }
 
   /**
@@ -254,39 +204,15 @@ export class MerchantsService {
    * ADMIN only.
    */
   async remove(companyId: string, id: string) {
-    const merchant = await this.prisma.merchant.findFirst({
-      where: {
-        id,
-        companyId,
-        deletedAt: null,
-      },
-    });
+    const merchant = await this.merchantRepository.findOne(companyId, id)
 
     if (!merchant) {
-      throw new NotFoundException('Merchant not found');
+      throw new NotFoundException("Merchant not found")
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.merchant.update({
-        where: { id, companyId },
-        data: {
-          isActive: false,
-          deletedAt: new Date(),
-        },
-      });
+    await this.merchantRepository.delete(companyId, id)
 
-      if (merchant.userId) {
-        await tx.user.update({
-          where: { id: merchant.userId },
-          data: {
-            isActive: false,
-            deletedAt: new Date(),
-          },
-        });
-      }
-    });
-
-    return { id };
+    return { id }
   }
 
   /**
@@ -301,72 +227,41 @@ export class MerchantsService {
    *
    * ADMIN and DISPATCHER can attach accounts.
    */
-  async attachAccount(
-    companyId: string,
-    merchantId: string,
-    dto: CreateMerchantAccountDto,
-  ) {
-    const merchant = await this.prisma.merchant.findFirst({
-      where: {
-        id: merchantId,
-        companyId,
-        deletedAt: null,
-      },
-    });
+  async attachAccount(companyId: string, merchantId: string, dto: CreateMerchantAccountDto) {
+    const merchant = await this.merchantRepository.findOne(companyId, merchantId)
 
     if (!merchant) {
-      throw new NotFoundException('Merchant not found');
+      throw new NotFoundException("Merchant not found")
     }
 
     if (merchant.userId) {
-      throw new ConflictException('Merchant already has a login');
+      throw new ConflictException("Merchant already has a login")
     }
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+    const existingUser = await this.userRepository.findByEmail(dto.email)
 
     if (existingUser) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException("Email already exists")
     }
 
-    const bcrypt = await import('bcryptjs');
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const bcrypt = await import("bcryptjs")
+    const passwordHash = await bcrypt.hash(dto.password, 10)
 
-    const updatedMerchant = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email: dto.email,
-          passwordHash,
-          fullName: dto.email,
-          role: UserRole.MERCHANT,
-          companyId,
-          hubId: null,
-          isActive: true,
-        },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-        },
-      });
+    const user = await this.userRepository.create({
+      email: dto.email,
+      passwordHash,
+      fullName: dto.email,
+      role: UserRole.MERCHANT,
+      companyId,
+      hubId: null as string | null,
+    })
 
-      return await tx.merchant.update({
-        where: { id: merchantId, companyId },
-        data: {
-          userId: user.id,
-        },
-        select: {
-          id: true,
-          userId: true,
-        },
-      });
-    });
+    const updatedMerchant = await this.merchantRepository.linkUser(companyId, merchantId, user.id)
 
     return {
-      merchantId,
+      merchantId: updatedMerchant.id,
       userId: updatedMerchant.userId,
       email: dto.email,
-    };
+    }
   }
 }

@@ -1,12 +1,12 @@
 import {
-  CanActivate,
-  ExecutionContext,
+  type CanActivate,
+  type ExecutionContext,
   ForbiddenException,
   Injectable,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { UserRole } from '../../generated/prisma/enums';
-import { ROLES_KEY } from '../constants/roles.constant';
+} from "@nestjs/common"
+import type { Reflector } from "@nestjs/core"
+import type { UserRole } from "../../generated/prisma/enums"
+import { ROLES_KEY } from "../constants/roles.constant"
 
 /**
  * RolesGuard - enforces role-based authorization on endpoints.
@@ -32,20 +32,17 @@ export class RolesGuard implements CanActivate {
    * @returns true if user has required role(s), false otherwise
    */
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.get<UserRole[]>(
-      ROLES_KEY,
-      context.getHandler(),
-    );
+    const requiredRoles = this.reflector.get<UserRole[]>(ROLES_KEY, context.getHandler())
 
-    if (!requiredRoles) return true;
+    if (!requiredRoles) return true
 
-    const request = context.switchToHttp().getRequest<Express.Request>();
-    const user = request.user;
+    const request = context.switchToHttp().getRequest<Express.Request>()
+    const user = request.user
 
     if (!user || !requiredRoles.includes(user.role)) {
-      throw new ForbiddenException();
+      throw new ForbiddenException()
     }
 
-    return true;
+    return true
   }
 }

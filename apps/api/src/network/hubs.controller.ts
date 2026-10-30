@@ -3,23 +3,15 @@
  * Hubs are tenant-owned (companyId required). Each hub belongs to one company and one city.
  * ADMIN role required for modifications; all authenticated users can list/get hubs.
  */
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { UserRole } from '../generated/prisma/enums';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { CreateHubDto } from './dto/create-hub.dto';
-import { UpdateHubDto } from './dto/update-hub.dto';
-import { HubsService } from './hubs.service';
+import { Controller, Get, Post, Body, Patch, Param, UseGuards } from "@nestjs/common"
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
+import { RolesGuard } from "../auth/guards/roles.guard"
+import { UserRole } from "../generated/prisma/enums"
+import { Roles } from "../auth/decorators/roles.decorator"
+import { CurrentUser } from "../auth/decorators/current-user.decorator"
+import type { CreateHubDto } from "./dto/create-hub.dto"
+import type { UpdateHubDto } from "./dto/update-hub.dto"
+import type { HubsService } from "./hubs.service"
 
 /**
  * Creates a new hub within the authenticated user's company.
@@ -29,18 +21,15 @@ import { HubsService } from './hubs.service';
  * @param createHubDto - Hub data (cityId, name, address optional)
  * @returns Created hub with city details
  */
-@Controller('hubs')
+@Controller("hubs")
 export class HubsController {
   constructor(private readonly hubsService: HubsService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  create(
-    @CurrentUser() actor: Express.User,
-    @Body() createHubDto: CreateHubDto,
-  ) {
-    return this.hubsService.create(actor.companyId, createHubDto);
+  create(@CurrentUser() actor: Express.User, @Body() createHubDto: CreateHubDto) {
+    return this.hubsService.create(actor.companyId, createHubDto)
   }
 
   /**
@@ -52,14 +41,9 @@ export class HubsController {
    */
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.DISPATCHER,
-    UserRole.DRIVER,
-    UserRole.MERCHANT,
-  )
+  @Roles(UserRole.ADMIN, UserRole.DISPATCHER, UserRole.DRIVER, UserRole.MERCHANT)
   findAll(@CurrentUser() actor: Express.User) {
-    return this.hubsService.findAll(actor.companyId);
+    return this.hubsService.findAll(actor.companyId)
   }
 
   /**
@@ -71,16 +55,11 @@ export class HubsController {
    * @returns Hub with city details
    * @throws NotFoundException if hub not found in this company
    */
-  @Get(':id')
+  @Get(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.DISPATCHER,
-    UserRole.DRIVER,
-    UserRole.MERCHANT,
-  )
-  findOne(@CurrentUser() actor: Express.User, @Param('id') id: string) {
-    return this.hubsService.findOne(actor.companyId, id);
+  @Roles(UserRole.ADMIN, UserRole.DISPATCHER, UserRole.DRIVER, UserRole.MERCHANT)
+  findOne(@CurrentUser() actor: Express.User, @Param("id") id: string) {
+    return this.hubsService.findOne(actor.companyId, id)
   }
 
   /**
@@ -92,14 +71,14 @@ export class HubsController {
    * @param updateHubDto - Updated hub data (name, address, isActive optional)
    * @returns Updated hub with city details
    */
-  @Patch(':id')
+  @Patch(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   update(
     @CurrentUser() actor: Express.User,
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() updateHubDto: UpdateHubDto,
   ) {
-    return this.hubsService.update(actor.companyId, id, updateHubDto);
+    return this.hubsService.update(actor.companyId, id, updateHubDto)
   }
 }

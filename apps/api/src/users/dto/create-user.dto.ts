@@ -7,14 +7,8 @@
  * Email must be globally unique.
  * Role is restricted to DISPATCHER only (via assignableRoles constant).
  */
-import {
-  IsEmail,
-  IsString,
-  IsNotEmpty,
-  MinLength,
-  IsEnum,
-} from 'class-validator';
-import { assignableRoles, AssignableUserRole } from '../constants/user-roles';
+import { IsEmail, IsString, IsNotEmpty, MinLength, IsEnum } from "class-validator"
+import { assignableRoles, type AssignableUserRole } from "../constants/user-roles"
 
 export class CreateUserDto {
   /**
@@ -22,7 +16,7 @@ export class CreateUserDto {
    * Must be valid email format and globally unique.
    */
   @IsEmail()
-  email: string;
+  email: string
 
   /**
    * Password for the user account (required).
@@ -30,7 +24,7 @@ export class CreateUserDto {
    */
   @IsNotEmpty()
   @MinLength(8)
-  password: string;
+  password: string
 
   /**
    * User role (required).
@@ -38,7 +32,7 @@ export class CreateUserDto {
    * Drivers and merchants are created via their respective modules.
    */
   @IsEnum(assignableRoles)
-  role: AssignableUserRole;
+  role: AssignableUserRole
 
   /**
    * Hub ID the dispatcher is assigned to (required).
@@ -46,5 +40,5 @@ export class CreateUserDto {
    */
   @IsString()
   @IsNotEmpty()
-  hubId: string;
+  hubId: string
 }

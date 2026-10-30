@@ -10,8 +10,8 @@
  * object and passed to JwtStrategy for database validation (which also checks
  * if the user is still active and not soft-deleted).
  */
-import { Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Injectable } from "@nestjs/common"
+import { AuthGuard } from "@nestjs/passport"
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {}
+export class JwtAuthGuard extends AuthGuard("jwt") {}

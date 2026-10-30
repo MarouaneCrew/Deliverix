@@ -1,11 +1,8 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { CreateCityDto } from './dto/create-city.dto';
-import { UpdateCityDto } from './dto/update-city.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
+import type { CreateCityDto } from "./dto/create-city.dto"
+import type { UpdateCityDto } from "./dto/update-city.dto"
+import type { CityRepository } from "../common/repositories/impl/city.repository"
+import type { City } from "@generated/prisma/client"
 
 /**
  * Cities service - manages shared reference data for cities.
@@ -14,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class CitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly cityRepository: CityRepository) {}
 
   /**
    * Creates a new city in the global reference data.
@@ -24,27 +21,15 @@ export class CitiesService {
    * @throws ConflictException if city with same name (case-insensitive) already exists
    */
   async create(dto: CreateCityDto) {
-    const existingCity = await this.prisma.city.findFirst({
-      where: {
-        name: { equals: dto.name, mode: 'insensitive' },
-      },
-    });
+    const existingCity = await this.cityRepository.findByName(dto.name)
 
     if (existingCity) {
-      throw new ConflictException('City already exists');
+      throw new ConflictException("City already exists")
     }
 
-    const city = await this.prisma.city.create({
-      data: {
-        name: dto.name,
-      },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    const city = await this.cityRepository.create({ name: dto.name })
 
-    return city;
+    return city
   }
 
   /**
@@ -53,15 +38,12 @@ export class CitiesService {
    * @returns Array of cities with id and name
    */
   async findAll() {
-    return this.prisma.city.findMany({
-      orderBy: {
-        name: 'asc',
-      },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    const cities = await this.cityRepository.findAll()
+
+    return cities.map(c => ({
+      id: c.id,
+      name: c.name,
+    }))
   }
 
   /**
@@ -71,19 +53,13 @@ export class CitiesService {
    * @throws NotFoundException if city not found
    */
   async findOne(id: string) {
-    const city = await this.prisma.city.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    const city = await this.cityRepository.findOne(id)
 
     if (!city) {
-      throw new NotFoundException('City not found');
+      throw new NotFoundException("City not found")
     }
 
-    return city;
+    return city
   }
 
   /**
@@ -96,39 +72,25 @@ export class CitiesService {
    * @throws ConflictException if new name conflicts with another city
    */
   async update(id: string, dto: UpdateCityDto) {
-    const existingCity = await this.prisma.city.findUnique({
-      where: { id },
-    });
+    const existingCity = await this.cityRepository.findOne(id)
 
     if (!existingCity) {
-      throw new NotFoundException('City not found');
+      throw new NotFoundException("City not found")
     }
 
     if (dto.name) {
-      const duplicateCity = await this.prisma.city.findFirst({
-        where: {
-          id: { not: id },
-          name: { equals: dto.name, mode: 'insensitive' },
-        },
-      });
+      const duplicateCity = await this.cityRepository.findByName(dto.name)
 
-      if (duplicateCity) {
-        throw new ConflictException('City already exists');
+      if (duplicateCity && duplicateCity.id !== id) {
+        throw new ConflictException("City already exists")
       }
 
-      await this.prisma.city.update({
-        where: { id },
-        data: { name: dto.name },
-        select: {
-          id: true,
-          name: true,
-        },
-      });
+      await this.cityRepository.update(id, { name: dto.name })
     }
 
     return {
       id: existingCity.id,
       name: dto.name ?? existingCity.name,
-    };
+    }
   }
 }

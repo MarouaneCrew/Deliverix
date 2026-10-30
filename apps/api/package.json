@@ -7,12 +7,14 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
+    "lint:check": "biome lint .",
+    "check": "biome check --write .",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -22,7 +24,8 @@
     "test:e2e:all": "npm run test:e2e && npm run test:e2e:throttle",
     "test:e2e:migrate": "dotenv -e .env.test -- prisma migrate deploy",
     "test:e2e:setup": "bash scripts/setup-test-db.sh",
-    "seed": "ts-node --transpile-only prisma/seed.ts"
+    "seed": "ts-node --transpile-only prisma/seed.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -46,6 +49,7 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.4",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
@@ -62,7 +66,9 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.0",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",

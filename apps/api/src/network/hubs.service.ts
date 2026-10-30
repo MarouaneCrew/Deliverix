@@ -1,11 +1,8 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { CreateHubDto } from './dto/create-hub.dto';
-import { UpdateHubDto } from './dto/update-hub.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
+import type { CreateHubDto } from "./dto/create-hub.dto"
+import type { UpdateHubDto } from "./dto/update-hub.dto"
+import type { HubRepository } from "../common/repositories/impl/hub.repository"
+import type { Hub } from "@generated/prisma/client"
 
 /**
  * Hubs service - manages company-scoped warehouse locations.
@@ -14,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class HubsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly hubRepository: HubRepository) {}
 
   /**
    * Creates a new hub within the specified company.
@@ -26,50 +23,26 @@ export class HubsService {
    * @throws ConflictException if hub with same name already exists for this company
    */
   async create(companyId: string, dto: CreateHubDto) {
-    const city = await this.prisma.city.findUnique({
-      where: { id: dto.cityId },
-    });
-
+    // Check city exists
+    const city = await this.hubRepository.findOne(companyId, dto.cityId)
     if (!city) {
-      throw new NotFoundException('City not found');
+      throw new NotFoundException("City not found")
     }
 
-    try {
-      const hub = await this.prisma.hub.create({
-        data: {
-          companyId,
-          cityId: dto.cityId,
-          name: dto.name,
-          address: dto.address ?? null,
-        },
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          isActive: true,
-          cityId: true,
-          city: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          createdAt: true,
-        },
-      });
-
-      return hub;
-    } catch (error: unknown) {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error as { code: string }).code === 'P2002'
-      ) {
-        throw new ConflictException('Hub already exists');
-      }
-      throw error;
+    // Check hub name doesn't already exist
+    const existingHub = await this.hubRepository.findByCompanyAndName(companyId, dto.name)
+    if (existingHub) {
+      throw new ConflictException("Hub already exists")
     }
+
+    const hub = await this.hubRepository.create({
+      companyId,
+      cityId: dto.cityId,
+      name: dto.name,
+      address: dto.address ?? null,
+    })
+
+    return hub
   }
 
   /**
@@ -78,26 +51,17 @@ export class HubsService {
    * @returns Array of hubs with city details
    */
   async findAll(companyId: string) {
-    return this.prisma.hub.findMany({
-      where: { companyId },
-      orderBy: {
-        name: 'asc',
-      },
-      select: {
-        id: true,
-        name: true,
-        address: true,
-        isActive: true,
-        cityId: true,
-        city: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        createdAt: true,
-      },
-    });
+    const hubs = await this.hubRepository.findAllByCompany(companyId)
+
+    return hubs.map(h => ({
+      id: h.id,
+      name: h.name,
+      address: h.address,
+      isActive: h.isActive,
+      cityId: h.cityId,
+      city: (h as any).city ? { id: (h as any).city.id, name: (h as any).city.name } : null,
+      createdAt: h.createdAt,
+    }))
   }
 
   /**
@@ -109,29 +73,13 @@ export class HubsService {
    * @throws NotFoundException if hub not found in this company
    */
   async findOne(companyId: string, id: string) {
-    const hub = await this.prisma.hub.findFirst({
-      where: { id, companyId },
-      select: {
-        id: true,
-        name: true,
-        address: true,
-        isActive: true,
-        cityId: true,
-        city: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        createdAt: true,
-      },
-    });
+    const hub = await this.hubRepository.findOne(companyId, id)
 
     if (!hub) {
-      throw new NotFoundException('Hub not found');
+      throw new NotFoundException("Hub not found")
     }
 
-    return hub;
+    return hub
   }
 
   /**
@@ -145,59 +93,30 @@ export class HubsService {
    * @throws ConflictException if new name conflicts with another hub in the same company
    */
   async update(companyId: string, id: string, dto: UpdateHubDto) {
-    const existingHub = await this.prisma.hub.findFirst({
-      where: { id, companyId },
-    });
+    const existingHub = await this.hubRepository.findOne(companyId, id)
 
     if (!existingHub) {
-      throw new NotFoundException('Hub not found');
+      throw new NotFoundException("Hub not found")
     }
 
-    const data: Record<string, unknown> = {};
-
-    if (dto.name !== undefined) {
-      data.name = dto.name;
-    }
-
-    if (dto.address !== undefined) {
-      data.address = dto.address;
-    }
-
-    if (dto.isActive !== undefined) {
-      data.isActive = dto.isActive;
-    }
-
-    try {
-      const hub = await this.prisma.hub.update({
-        where: { id, companyId },
-        data,
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          isActive: true,
-          cityId: true,
-          city: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          createdAt: true,
-        },
-      });
-
-      return hub;
-    } catch (error: unknown) {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error as { code: string }).code === 'P2002'
-      ) {
-        throw new ConflictException('Hub already exists');
+    // Check name conflict if name is changing
+    if (dto.name && dto.name !== existingHub.name) {
+      const duplicateHub = await this.hubRepository.findByCompanyAndName(companyId, dto.name)
+      if (duplicateHub && duplicateHub.id !== id) {
+        throw new ConflictException("Hub already exists")
       }
-      throw error;
+    }
+
+    const hub = await this.hubRepository.update(companyId, id, {
+      name: dto.name ?? undefined,
+      address: dto.address ?? undefined,
+      isActive: dto.isActive,
+    })
+
+    // Add city to response
+    return {
+      ...hub,
+      city: (hub as any).city ? { id: (hub as any).city.id, name: (hub as any).city.name } : null,
     }
   }
 }

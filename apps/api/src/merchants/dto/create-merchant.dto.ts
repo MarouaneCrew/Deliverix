@@ -10,14 +10,8 @@
  * - phone: optional E.164 format phone (8-15 digits with optional +)
  * - address: optional string, max 255 chars
  */
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  MaxLength,
-  Matches,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, Matches } from "class-validator"
+import { Transform } from "class-transformer"
 
 export class CreateMerchantDto {
   /**
@@ -27,10 +21,8 @@ export class CreateMerchantDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  name: string;
+  @Transform(({ value }: { value: unknown }) => (typeof value === "string" ? value.trim() : value))
+  name: string
 
   /**
    * Reference to the city where the merchant operates (required).
@@ -38,7 +30,7 @@ export class CreateMerchantDto {
    */
   @IsString()
   @IsNotEmpty()
-  cityId: string;
+  cityId: string
 
   /**
    * Business phone number (optional).
@@ -47,7 +39,7 @@ export class CreateMerchantDto {
    */
   @IsOptional()
   @Matches(/^\+?[0-9]{8,15}$/)
-  phone?: string;
+  phone?: string
 
   /**
    * Business address (optional).
@@ -56,5 +48,5 @@ export class CreateMerchantDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  address?: string;
+  address?: string
 }

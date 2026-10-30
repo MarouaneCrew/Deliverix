@@ -3,14 +3,7 @@
  *
  * All fields are optional. hubId can only be set for DISPATCHER users.
  */
-import {
-  IsBoolean,
-  IsEmail,
-  IsOptional,
-  IsString,
-  IsNotEmpty,
-  MinLength,
-} from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, IsNotEmpty, MinLength } from "class-validator"
 
 export class UpdateUserDto {
   /**
@@ -19,7 +12,7 @@ export class UpdateUserDto {
    */
   @IsOptional()
   @IsEmail()
-  email?: string;
+  email?: string
 
   /**
    * Updated password (optional).
@@ -27,7 +20,7 @@ export class UpdateUserDto {
    */
   @IsOptional()
   @MinLength(8)
-  password?: string;
+  password?: string
 
   /**
    * Updated hub ID (optional).
@@ -37,7 +30,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  hubId?: string;
+  hubId?: string
 
   /**
    * Updated active status (optional).
@@ -45,5 +38,5 @@ export class UpdateUserDto {
    */
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  isActive?: boolean
 }

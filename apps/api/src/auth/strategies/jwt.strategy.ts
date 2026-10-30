@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { UserRole } from '../../generated/prisma/enums';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { UnauthorizedException } from '@nestjs/common';
+import { Injectable } from "@nestjs/common"
+import { PassportStrategy } from "@nestjs/passport"
+import { ExtractJwt, Strategy } from "passport-jwt"
+import type { UserRole } from "../../generated/prisma/enums"
+import type { ConfigService } from "@nestjs/config"
+import type { PrismaService } from "../../prisma/prisma.service"
+import { UnauthorizedException } from "@nestjs/common"
 
 /**
  * JwtStrategy - validates JWT access tokens on every request.
@@ -24,8 +24,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: config.get<string>('JWT_SECRET')!,
-    });
+      secretOrKey: config.get<string>("JWT_SECRET")!,
+    })
   }
 
   /**
@@ -52,16 +52,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         isActive: true,
         deletedAt: true,
       },
-    });
+    })
 
-    if (!user || !user.isActive || user.deletedAt)
-      throw new UnauthorizedException();
+    if (!user || !user.isActive || user.deletedAt) throw new UnauthorizedException()
 
     return {
       userId: user.id,
       role: user.role,
       companyId: user.companyId,
       hubId: user.hubId,
-    };
+    }
   }
 }

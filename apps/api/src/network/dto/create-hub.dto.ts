@@ -4,8 +4,8 @@
  * Hubs are tenant-owned (companyId required).
  * Each hub belongs to one company and one city.
  */
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from "class-validator"
+import { Transform } from "class-transformer"
 
 export class CreateHubDto {
   /**
@@ -14,7 +14,7 @@ export class CreateHubDto {
    */
   @IsString()
   @IsNotEmpty()
-  cityId: string;
+  cityId: string
 
   /**
    * Hub name (required).
@@ -24,10 +24,8 @@ export class CreateHubDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  name: string;
+  @Transform(({ value }: { value: unknown }) => (typeof value === "string" ? value.trim() : value))
+  name: string
 
   /**
    * Hub physical address (optional).
@@ -36,5 +34,5 @@ export class CreateHubDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  address?: string;
+  address?: string
 }

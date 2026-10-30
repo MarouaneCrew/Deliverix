@@ -7,24 +7,15 @@
  * Cross-tenant access returns 404 (not 403).
  * ADMIN role required for all operations.
  */
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { UserRole } from '../generated/prisma/enums';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UsersService } from './users.service';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from "@nestjs/common"
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
+import { RolesGuard } from "../auth/guards/roles.guard"
+import { UserRole } from "../generated/prisma/enums"
+import { CurrentUser } from "../auth/decorators/current-user.decorator"
+import { Roles } from "../auth/decorators/roles.decorator"
+import type { CreateUserDto } from "./dto/create-user.dto"
+import type { UpdateUserDto } from "./dto/update-user.dto"
+import type { UsersService } from "./users.service"
 
 /**
  * Creates a new staff user account within the authenticated user's company.
@@ -34,18 +25,15 @@ import { UsersService } from './users.service';
  * @param createUserDto - User data (email, password, role, hubId)
  * @returns Created user with id, email, role, isActive, hubId
  */
-@Controller('users')
+@Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  create(
-    @CurrentUser() actor: Express.User,
-    @Body() createUserDto: CreateUserDto,
-  ) {
-    return this.usersService.create(actor.companyId, createUserDto);
+  create(@CurrentUser() actor: Express.User, @Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(actor.companyId, createUserDto)
   }
 
   /**
@@ -58,7 +46,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   findAll(@CurrentUser() actor: Express.User) {
-    return this.usersService.findAll(actor.companyId);
+    return this.usersService.findAll(actor.companyId)
   }
 
   /**
@@ -69,11 +57,11 @@ export class UsersController {
    * @returns User with id, email, role, isActive, hubId, createdAt
    * @throws NotFoundException if user not found in this company
    */
-  @Get(':id')
+  @Get(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  findOne(@CurrentUser() actor: Express.User, @Param('id') id: string) {
-    return this.usersService.findOne(actor.companyId, id);
+  findOne(@CurrentUser() actor: Express.User, @Param("id") id: string) {
+    return this.usersService.findOne(actor.companyId, id)
   }
 
   /**
@@ -86,15 +74,15 @@ export class UsersController {
    * @param updateUserDto - Updated user data (email, password, isActive, hubId optional)
    * @returns Updated user with id, email, role, isActive, hubId, createdAt
    */
-  @Patch(':id')
+  @Patch(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   update(
     @CurrentUser() actor: Express.User,
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.usersService.update(actor.companyId, id, updateUserDto);
+    return this.usersService.update(actor.companyId, id, updateUserDto)
   }
 
   /**
@@ -105,10 +93,10 @@ export class UsersController {
    * @param id - User ID to delete
    * @returns Deleted user with only id
    */
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  remove(@CurrentUser() actor: Express.User, @Param('id') id: string) {
-    return this.usersService.remove(actor.companyId, id);
+  remove(@CurrentUser() actor: Express.User, @Param("id") id: string) {
+    return this.usersService.remove(actor.companyId, id)
   }
 }

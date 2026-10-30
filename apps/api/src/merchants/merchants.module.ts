@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { MerchantsController } from './merchants.controller';
-import { MerchantsService } from './merchants.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { Module } from "@nestjs/common"
+import { MerchantsController } from "./merchants.controller"
+import { MerchantsService } from "./merchants.service"
+import { CommonRepositoriesModule } from "../common/repositories/common-repositories.module"
 
 @Module({
-  imports: [PrismaModule],
+  imports: [CommonRepositoriesModule],
   controllers: [MerchantsController],
   providers: [MerchantsService],
   exports: [MerchantsService],

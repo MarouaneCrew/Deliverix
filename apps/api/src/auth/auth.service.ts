@@ -1,9 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
-import { PrismaService } from '../prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '../generated/prisma/client';
-import { createHash, randomBytes } from 'node:crypto';
+import { Injectable, UnauthorizedException } from "@nestjs/common"
+import * as bcrypt from "bcryptjs"
+import type { JwtService } from "@nestjs/jwt"
+import type { UserRepository } from "../common/repositories/impl/user.repository"
+import type { UserRole } from "../generated/prisma/client"
+import { createHash, randomBytes } from "node:crypto"
 
 /**
  * AuthService - manages user authentication and security.
@@ -15,7 +15,7 @@ import { createHash, randomBytes } from 'node:crypto';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -28,20 +28,17 @@ export class AuthService {
    * @throws UnauthorizedException if credentials are invalid or user is inactive/deleted
    */
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await this.userRepository.findByEmail(email)
 
     if (!user || !user.isActive || user.deletedAt) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials")
     }
 
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash)
 
-    if (!passwordMatches)
-      throw new UnauthorizedException('Invalid credentials');
+    if (!passwordMatches) throw new UnauthorizedException("Invalid credentials")
 
-    return user;
+    return user
   }
 
   /**
@@ -54,36 +51,21 @@ export class AuthService {
    * @returns Success message
    * @throws UnauthorizedException if user not found, inactive, deleted, or current password incorrect
    */
-  async changePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-  ) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.userRepository.findOne("*", userId)
 
     if (!user || !user.isActive || user.deletedAt)
-      throw new UnauthorizedException('Invalid Credentials');
+      throw new UnauthorizedException("Invalid Credentials")
 
-    const passwordMatches = await bcrypt.compare(
-      currentPassword,
-      user.passwordHash,
-    );
+    const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash)
 
-    if (!passwordMatches)
-      throw new UnauthorizedException('Current password is incorrect');
+    if (!passwordMatches) throw new UnauthorizedException("Current password is incorrect")
 
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash,
-      },
-    });
+    await this.userRepository.update("*", userId, { passwordHash })
 
-    return { message: 'Password changed successfully' };
+    return { message: "Password changed successfully" }
   }
 
   /**
@@ -95,27 +77,27 @@ export class AuthService {
    * @returns Message indicating if email exists and optionally the reset token
    */
   async forgotPassword(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.userRepository.findByEmail(email)
 
     if (!user || !user.isActive || user.deletedAt)
-      return { message: 'If that email exists, a reset link has been sent' };
+      return { message: "If that email exists, a reset link has been sent" }
 
-    const resetToken = this.generateOpaqueToken();
-    const resetTokenHash = this.hashToken(resetToken);
-    const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const resetToken = this.generateOpaqueToken()
+    const resetTokenHash = this.hashToken(resetToken)
+    const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000)
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { resetTokenHash, resetTokenExpiresAt },
-    });
+    await this.userRepository.updateAuthenticationTokens(user.id, {
+      resetTokenHash,
+      resetTokenExpiresAt,
+    })
 
     const response: { message: string; resetToken?: string } = {
-      message: 'If that email exists, a reset link has been sent',
-    };
+      message: "If that email exists, a reset link has been sent",
+    }
 
-    if (process.env.NODE_ENV !== 'production') response.resetToken = resetToken;
+    if (process.env.NODE_ENV !== "production") response.resetToken = resetToken
 
-    return response;
+    return response
   }
 
   /**
@@ -128,36 +110,29 @@ export class AuthService {
    * @throws UnauthorizedException if token is invalid or expired
    */
   async resetPassword(token: string, newPassword: string) {
-    const resetTokenHash = this.hashToken(token);
+    const resetTokenHash = this.hashToken(token)
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        resetTokenHash,
-        isActive: true,
-        deletedAt: null,
-      },
-    });
+    const user = await this.userRepository.findByResetTokenHash(resetTokenHash)
 
-    if (!user)
-      throw new UnauthorizedException('Invalid or expired reset token');
+    if (!user) throw new UnauthorizedException("Invalid or expired reset token")
 
     if (!user.resetTokenExpiresAt || user.resetTokenExpiresAt <= new Date())
-      throw new UnauthorizedException('Invalid or expired reset token');
+      throw new UnauthorizedException("Invalid or expired reset token")
 
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        resetTokenHash: null,
-        resetTokenExpiresAt: null,
-        refreshTokenHash: null,
-        refreshTokenExpiresAt: null,
-      },
-    });
+    // Update password and invalidate all tokens
+    await this.userRepository.update(user.companyId, user.id, {
+      passwordHash,
+    })
+    await this.userRepository.updateAuthenticationTokens(user.id, {
+      resetTokenHash: null,
+      resetTokenExpiresAt: null,
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+    })
 
-    return { message: 'Password reset successfully' };
+    return { message: "Password reset successfully" }
   }
 
   /**
@@ -171,29 +146,24 @@ export class AuthService {
     const payload = {
       sub: user.id,
       role: user.role,
-    };
+    }
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    const accessToken = await this.jwtService.signAsync(payload)
 
-    const refreshToken = this.generateOpaqueToken();
-    const refreshTokenHash = this.hashToken(refreshToken);
+    const refreshToken = this.generateOpaqueToken()
+    const refreshTokenHash = this.hashToken(refreshToken)
 
-    const refreshTokenExpiresAt = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000,
-    );
+    const refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        refreshTokenHash,
-        refreshTokenExpiresAt,
-      },
-    });
+    await this.userRepository.updateAuthenticationTokens(user.id, {
+      refreshTokenHash,
+      refreshTokenExpiresAt,
+    })
 
     return {
       accessToken,
       refreshToken,
-    };
+    }
   }
 
   /**
@@ -203,15 +173,12 @@ export class AuthService {
    * @returns Success message
    */
   async logout(userId: string) {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        refreshTokenHash: null,
-        refreshTokenExpiresAt: null,
-      },
-    });
+    await this.userRepository.updateAuthenticationTokens(userId, {
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+    })
 
-    return { message: 'Logged out successfully' };
+    return { message: "Logged out successfully" }
   }
 
   /**
@@ -223,48 +190,36 @@ export class AuthService {
    * @throws UnauthorizedException if refresh token is invalid or expired
    */
   async refreshAccessToken(refreshToken: string) {
-    const refreshTokenHash = this.hashToken(refreshToken);
+    const refreshTokenHash = this.hashToken(refreshToken)
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        refreshTokenHash,
-        isActive: true,
-        deletedAt: null,
-      },
-    });
+    const user = await this.userRepository.findByRefreshTokenHash(refreshTokenHash)
 
     if (!user) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token")
     }
 
-    if (
-      !user.refreshTokenExpiresAt ||
-      user.refreshTokenExpiresAt <= new Date()
-    ) {
-      throw new UnauthorizedException('Refresh token expired');
+    if (!user.refreshTokenExpiresAt || user.refreshTokenExpiresAt <= new Date()) {
+      throw new UnauthorizedException("Refresh token expired")
     }
 
     const payload = {
       sub: user.id,
       role: user.role,
-    };
+    }
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    const accessToken = await this.jwtService.signAsync(payload)
 
-    const newRefreshToken = this.generateOpaqueToken();
-    const newRefreshTokenHash = this.hashToken(newRefreshToken);
+    const newRefreshToken = this.generateOpaqueToken()
+    const newRefreshTokenHash = this.hashToken(newRefreshToken)
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        refreshTokenHash: newRefreshTokenHash,
-      },
-    });
+    await this.userRepository.updateAuthenticationTokens(user.id, {
+      refreshTokenHash: newRefreshTokenHash,
+    })
 
     return {
       accessToken,
       refreshToken: newRefreshToken,
-    };
+    }
   }
 
   /**
@@ -273,7 +228,7 @@ export class AuthService {
    * @returns 128-character hex string (64 bytes)
    */
   private generateOpaqueToken(): string {
-    return randomBytes(64).toString('hex');
+    return randomBytes(64).toString("hex")
   }
 
   /**
@@ -283,6 +238,6 @@ export class AuthService {
    * @returns 64-character hex string (SHA-256 hash)
    */
   private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
+    return createHash("sha256").update(token).digest("hex")
   }
 }
