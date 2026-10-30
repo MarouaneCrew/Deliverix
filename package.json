@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "scripts": {
+    "husky": "husky install",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "npx --prefix apps/api biome lint --write .",
+      "npx --prefix apps/api biome format --write ."
+    ]
+  }
+}
