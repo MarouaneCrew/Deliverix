@@ -3,6 +3,7 @@ import { NestFactory } from "@nestjs/core"
 import type { Express } from "express"
 import { AppModule } from "./app.module"
 import { Logger, ValidationPipe } from "@nestjs/common"
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger"
 
 async function bootstrap() {
   const requiredEnvVars = ["JWT_SECRET", "DATABASE_URL"]
@@ -14,14 +15,19 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule)
-  const expressApp = app.getHttpAdapter().getInstance() as unknown as Express
-  expressApp.set("trust proxy", 1)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
     }),
   )
+
+  const config = new DocumentBuilder()
+    .setTitle("Deliverix API")
+    .setVersion("1.0")
+    .addBearerAuth()
+    .build()
+  SwaggerModule.setup("docs", app, SwaggerModule.createDocument(app, config))
   void app.listen(process.env.PORT ?? 3000)
 }
 void bootstrap()
