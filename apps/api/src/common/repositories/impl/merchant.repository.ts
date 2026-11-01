@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "@/prisma/prisma.service"
+import { PrismaService } from "@/prisma/prisma.service"
 import type {
   IMerchantRepository,
   MerchantWithCityAndUser,
@@ -152,14 +152,21 @@ export class MerchantRepository implements IMerchantRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await this.prisma.merchant.update({
-      where: {
-        id,
-        companyId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    const now = new Date()
+
+    await this.prisma.$transaction(async tx => {
+      const merchant = await tx.merchant.update({
+        where: { id, companyId },
+        data: { isActive: false, deletedAt: now },
+        select: { userId: true },
+      })
+
+      if (merchant.userId) {
+        await tx.user.update({
+          where: { id: merchant.userId },
+          data: { isActive: false, deletedAt: now },
+        })
+      }
     })
   }
 }

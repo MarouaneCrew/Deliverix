@@ -8,14 +8,14 @@
  * access tokens are immediately rejected via JwtStrategy validation on every request.
  */
 import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common"
-import type { AuthService } from "./auth.service"
-import type { LoginDto } from "./dto/login.dto"
+import { AuthService } from "./auth.service"
+import { LoginDto } from "./dto/login.dto"
 import { JwtAuthGuard } from "./guards/jwt-auth.guard"
-import type { RefreshTokenDto } from "./dto/refresh-token.dto"
+import { RefreshTokenDto } from "./dto/refresh-token.dto"
 import { CurrentUser } from "./decorators/current-user.decorator"
-import type { ChangePasswordDto } from "./dto/change-password.dto"
-import type { ForgotPasswordDto } from "./dto/forgot-password.dto"
-import type { ResetPasswordDto } from "./dto/reset-password.dto"
+import { ChangePasswordDto } from "./dto/change-password.dto"
+import { ForgotPasswordDto } from "./dto/forgot-password.dto"
+import { ResetPasswordDto } from "./dto/reset-password.dto"
 import { Throttle } from "@nestjs/throttler"
 import { FORGOT_PASSWORD_THROTTLE, LOGIN_THROTTLE } from "./constants/throttle.constants"
 

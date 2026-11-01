@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "@/prisma/prisma.service"
+import { PrismaService } from "@/prisma/prisma.service"
 import type { IUserRepository } from "@/common/repositories/interfaces/user.repository.interface"
 import { type User, UserRole } from "@/generated/prisma/client"
 
@@ -35,7 +35,7 @@ export class UserRepository implements IUserRepository {
       where: {
         id,
         companyId,
-        deletedAt: null,
+        // deletedAt: null,
       },
     })
   }

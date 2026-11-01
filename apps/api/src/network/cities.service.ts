@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
-import type { CreateCityDto } from "./dto/create-city.dto"
-import type { UpdateCityDto } from "./dto/update-city.dto"
-import type { CityRepository } from "@/common/repositories/impl/city.repository"
+import { CreateCityDto } from "./dto/create-city.dto"
+import { UpdateCityDto } from "./dto/update-city.dto"
+import { CityRepository } from "@/common/repositories/impl/city.repository"
 import type { City } from "@/generated/prisma/client"
 
 /**

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common"
 import * as bcrypt from "bcryptjs"
-import type { JwtService } from "@nestjs/jwt"
-import type { UserRepository } from "@/common/repositories/impl/user.repository"
+import { JwtService } from "@nestjs/jwt"
+import { UserRepository } from "@/common/repositories/impl/user.repository"
 import type { UserRole } from "@/generated/prisma/client"
 import { createHash, randomBytes } from "node:crypto"
 

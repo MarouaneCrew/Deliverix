@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "@/prisma/prisma.service"
+import { PrismaService } from "@/prisma/prisma.service"
 import type { IDriverRepository } from "@/common/repositories/interfaces/driver.repository.interface"
 import { type Driver, type DriverEngagement, DriverStatus } from "@/generated/prisma/client"
 

@@ -12,6 +12,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core"
 import { ConfigModule } from "@nestjs/config"
 import { GLOBAL_THROTTLE_LIMIT } from "./auth/constants/throttle.constants"
 import { RequestLoggingInterceptor } from "./common/request-logging.interceptor"
+import { CommonRepositoriesModule } from "./common/repositories/common-repositories.module"
 
 @Module({
   imports: [

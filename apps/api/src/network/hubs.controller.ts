@@ -9,9 +9,9 @@ import { RolesGuard } from "@/auth/guards/roles.guard"
 import { UserRole } from "@/generated/prisma/enums"
 import { Roles } from "@/auth/decorators/roles.decorator"
 import { CurrentUser } from "@/auth/decorators/current-user.decorator"
-import type { CreateHubDto } from "./dto/create-hub.dto"
-import type { UpdateHubDto } from "./dto/update-hub.dto"
-import type { HubsService } from "./hubs.service"
+import { CreateHubDto } from "./dto/create-hub.dto"
+import { UpdateHubDto } from "./dto/update-hub.dto"
+import { HubsService } from "./hubs.service"
 
 /**
  * Creates a new hub within the authenticated user's company.

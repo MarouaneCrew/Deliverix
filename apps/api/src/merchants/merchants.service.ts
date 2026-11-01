@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
 import { Inject } from "@nestjs/common"
-import type { MerchantRepository } from "@/common/repositories/impl/merchant.repository"
-import type { CityRepository } from "@/common/repositories/impl/city.repository"
-import type { UserRepository } from "@/common/repositories/impl/user.repository"
-import type { CreateMerchantDto } from "./dto/create-merchant.dto"
-import type { UpdateMerchantDto } from "./dto/update-merchant.dto"
-import type { CreateMerchantAccountDto } from "./dto/create-merchant-account.dto"
+import { MerchantRepository } from "@/common/repositories/impl/merchant.repository"
+import { CityRepository } from "@/common/repositories/impl/city.repository"
+import { UserRepository } from "@/common/repositories/impl/user.repository"
+import { CreateMerchantDto } from "./dto/create-merchant.dto"
+import { UpdateMerchantDto } from "./dto/update-merchant.dto"
+import { CreateMerchantAccountDto } from "./dto/create-merchant-account.dto"
 import { UserRole } from "@/generated/prisma/enums"
 
 @Injectable()

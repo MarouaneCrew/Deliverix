@@ -3,9 +3,9 @@ import { JwtAuthGuard } from "@/auth/guards/jwt-auth.guard"
 import { RolesGuard } from "@/auth/guards/roles.guard"
 import { UserRole } from "@/generated/prisma/enums"
 import { Roles } from "@/auth/decorators/roles.decorator"
-import type { CreateCityDto } from "./dto/create-city.dto"
-import type { UpdateCityDto } from "./dto/update-city.dto"
-import type { CitiesService } from "./cities.service"
+import { CreateCityDto } from "./dto/create-city.dto"
+import { UpdateCityDto } from "./dto/update-city.dto"
+import { CitiesService } from "./cities.service"
 
 /**
  * Cities controller - manages shared reference data for cities.

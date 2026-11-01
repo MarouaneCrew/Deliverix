@@ -4,12 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common"
-import type { CreateUserDto } from "./dto/create-user.dto"
-import type { UpdateUserDto } from "./dto/update-user.dto"
-import type { UserRepository } from "@/common/repositories/impl/user.repository"
+import { CreateUserDto } from "./dto/create-user.dto"
+import { UpdateUserDto } from "./dto/update-user.dto"
+import { UserRepository } from "@/common/repositories/impl/user.repository"
 import * as bcrypt from "bcryptjs"
 import type { User, UserRole } from "@/generated/prisma/client"
-import type { HubRepository } from "@/common/repositories/impl/hub.repository"
+import { HubRepository } from "@/common/repositories/impl/hub.repository"
 
 /**
  * Users service - manages company-scoped staff user accounts.

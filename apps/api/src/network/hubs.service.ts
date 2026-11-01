@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
-import type { CreateHubDto } from "./dto/create-hub.dto"
-import type { UpdateHubDto } from "./dto/update-hub.dto"
-import type { HubRepository } from "@/common/repositories/impl/hub.repository"
+import { CreateHubDto } from "./dto/create-hub.dto"
+import { UpdateHubDto } from "./dto/update-hub.dto"
+import { HubRepository } from "@/common/repositories/impl/hub.repository"
 import type { Hub } from "@/generated/prisma/client"
+import { CityRepository } from "@/common/repositories/impl/city.repository"
 
 /**
  * Hubs service - manages company-scoped warehouse locations.
@@ -11,7 +12,10 @@ import type { Hub } from "@/generated/prisma/client"
  */
 @Injectable()
 export class HubsService {
-  constructor(private readonly hubRepository: HubRepository) {}
+  constructor(
+    private readonly hubRepository: HubRepository,
+    private readonly cityRepository: CityRepository,
+  ) {}
 
   /**
    * Creates a new hub within the specified company.
@@ -24,7 +28,8 @@ export class HubsService {
    */
   async create(companyId: string, dto: CreateHubDto) {
     // Check city exists
-    const city = await this.hubRepository.findOne(companyId, dto.cityId)
+    // const city = await this.hubRepository.findOne(companyId, dto.cityId)
+    const city = await this.cityRepository.findOne(dto.cityId)
     if (!city) {
       throw new NotFoundException("City not found")
     }
