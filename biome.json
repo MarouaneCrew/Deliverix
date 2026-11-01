@@ -30,7 +30,7 @@
       },
       "style": {
         "useConst": "error",
-        "useImportType": "on",
+        "useImportType": "off",
         "useTemplate": "on"
       },
       "suspicious": {
@@ -203,5 +203,6 @@
         }
       }
     }
-  ]
+  ],
+  "assist": { "actions": { "source": { "organizeImports": "off" } } }
 }
