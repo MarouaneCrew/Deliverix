@@ -6,9 +6,10 @@ import {
 } from "@nestjs/common"
 import type { CreateUserDto } from "./dto/create-user.dto"
 import type { UpdateUserDto } from "./dto/update-user.dto"
-import type { UserRepository } from "../common/repositories/impl/user.repository"
+import type { UserRepository } from "@/common/repositories/impl/user.repository"
 import * as bcrypt from "bcryptjs"
-import type { User, UserRole } from "@generated/prisma/client"
+import type { User, UserRole } from "@/generated/prisma/client"
+import type { HubRepository } from "@/common/repositories/impl/hub.repository"
 
 /**
  * Users service - manages company-scoped staff user accounts.
@@ -17,7 +18,10 @@ import type { User, UserRole } from "@generated/prisma/client"
  */
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly hubRepository: HubRepository,
+  ) {}
 
   /**
    * Creates a new staff user account within the specified company.
@@ -34,7 +38,7 @@ export class UsersService {
 
     if (existingUser) throw new ConflictException("Email already exists")
 
-    const hub = await this.userRepository.findOne(companyId, dto.hubId)
+    const hub = await this.hubRepository.findOne(companyId, dto.hubId)
 
     if (!hub) throw new NotFoundException("Hub not found")
 
@@ -130,7 +134,7 @@ export class UsersService {
       if (target.role !== "DISPATCHER")
         throw new BadRequestException("hubId only applies to dispatchers")
 
-      const hubExists = await this.userRepository.findOne(companyId, dto.hubId)
+      const hubExists = await this.hubRepository.findOne(companyId, dto.hubId)
       if (!hubExists) throw new NotFoundException("Hub not found")
 
       data.hubId = dto.hubId

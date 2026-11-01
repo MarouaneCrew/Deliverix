@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
 import type { CreateCityDto } from "./dto/create-city.dto"
 import type { UpdateCityDto } from "./dto/update-city.dto"
-import type { CityRepository } from "../common/repositories/impl/city.repository"
-import type { City } from "@generated/prisma/client"
+import type { CityRepository } from "@/common/repositories/impl/city.repository"
+import type { City } from "@/generated/prisma/client"
 
 /**
  * Cities service - manages shared reference data for cities.

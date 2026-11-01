@@ -8,7 +8,7 @@
  * Role is restricted to DISPATCHER only (via assignableRoles constant).
  */
 import { IsEmail, IsString, IsNotEmpty, MinLength, IsEnum } from "class-validator"
-import { assignableRoles, type AssignableUserRole } from "../constants/user-roles"
+import { assignableRoles, type AssignableUserRole } from "@/users/constants/user-roles"
 
 export class CreateUserDto {
   /**

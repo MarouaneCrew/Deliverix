@@ -1,4 +1,4 @@
-import type { Driver, DriverEngagement, DriverStatus } from "@generated/prisma/client"
+import type { Driver, DriverEngagement, DriverStatus } from "@/generated/prisma/client"
 
 /**
  * Repository interface for Driver aggregate.

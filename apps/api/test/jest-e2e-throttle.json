@@ -4,5 +4,8 @@
     "testEnvironment": "node",
     "testRegex": "throttling\\.e2e-spec\\.ts$",
     "transform": { "^.+\\.(t|j)s$": "ts-jest" },
-    "setupFiles": ["./jest-e2e-throttle-setup.ts"]
+    "setupFiles": ["./jest-e2e-throttle-setup.ts"],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/../src/$1"
+    }
   }

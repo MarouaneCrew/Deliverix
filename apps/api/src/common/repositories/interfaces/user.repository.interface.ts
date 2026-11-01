@@ -1,4 +1,4 @@
-import type { User, UserRole } from "@generated/prisma/client"
+import type { User, UserRole } from "@/generated/prisma/client"
 
 /**
  * Repository interface for User aggregate.

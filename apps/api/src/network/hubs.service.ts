@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ConflictException } from "@nestjs/common"
 import type { CreateHubDto } from "./dto/create-hub.dto"
 import type { UpdateHubDto } from "./dto/update-hub.dto"
-import type { HubRepository } from "../common/repositories/impl/hub.repository"
-import type { Hub } from "@generated/prisma/client"
+import type { HubRepository } from "@/common/repositories/impl/hub.repository"
+import type { Hub } from "@/generated/prisma/client"
 
 /**
  * Hubs service - manages company-scoped warehouse locations.

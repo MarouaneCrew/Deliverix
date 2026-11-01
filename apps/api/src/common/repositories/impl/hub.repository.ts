@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "@prisma/prisma.service"
-import type { IHubRepository } from "../interfaces/hub.repository.interface"
-import type { Hub } from "@generated/prisma/client"
+import type { PrismaService } from "@/prisma/prisma.service"
+import type { IHubRepository } from "@/common/repositories/interfaces/hub.repository.interface"
+import type { Hub } from "@/generated/prisma/client"
 
 @Injectable()
 export class HubRepository implements IHubRepository {

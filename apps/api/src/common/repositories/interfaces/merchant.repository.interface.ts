@@ -1,4 +1,4 @@
-import type { Merchant, City, User } from "@generated/prisma/client"
+import type { Merchant, City, User } from "@/generated/prisma/client"
 
 /**
  * Repository interface for Merchant aggregate.

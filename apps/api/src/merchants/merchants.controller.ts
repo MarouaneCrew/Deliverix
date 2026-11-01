@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from "@nestjs/common"
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
-import { RolesGuard } from "../auth/guards/roles.guard"
+import { JwtAuthGuard } from "@/auth/guards/jwt-auth.guard"
+import { RolesGuard } from "@/auth/guards/roles.guard"
 import type { MerchantsService } from "./merchants.service"
-import { UserRole } from "../generated/prisma/enums"
+import { UserRole } from "@/generated/prisma/enums"
 import type { CreateMerchantDto } from "./dto/create-merchant.dto"
 import type { UpdateMerchantDto } from "./dto/update-merchant.dto"
 import type { CreateMerchantAccountDto } from "./dto/create-merchant-account.dto"
-import { CurrentUser } from "../auth/decorators/current-user.decorator"
-import { Roles } from "../auth/decorators/roles.decorator"
+import { CurrentUser } from "@/auth/decorators/current-user.decorator"
+import { Roles } from "@/auth/decorators/roles.decorator"
 import type { Express } from "express"
 
 @Controller("merchants")

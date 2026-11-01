@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common"
 import * as bcrypt from "bcryptjs"
 import type { JwtService } from "@nestjs/jwt"
-import type { UserRepository } from "../common/repositories/impl/user.repository"
-import type { UserRole } from "../generated/prisma/client"
+import type { UserRepository } from "@/common/repositories/impl/user.repository"
+import type { UserRole } from "@/generated/prisma/client"
 import { createHash, randomBytes } from "node:crypto"
 
 /**
@@ -51,8 +51,8 @@ export class AuthService {
    * @returns Success message
    * @throws UnauthorizedException if user not found, inactive, deleted, or current password incorrect
    */
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const user = await this.userRepository.findOne("*", userId)
+  async changePassword(userId: string, companyId, currentPassword: string, newPassword: string) {
+    const user = await this.userRepository.findOne(companyId, userId)
 
     if (!user || !user.isActive || user.deletedAt)
       throw new UnauthorizedException("Invalid Credentials")
@@ -63,7 +63,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    await this.userRepository.update("*", userId, { passwordHash })
+    await this.userRepository.update(companyId, userId, { passwordHash })
 
     return { message: "Password changed successfully" }
   }

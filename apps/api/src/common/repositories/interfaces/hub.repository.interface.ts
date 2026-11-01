@@ -1,4 +1,4 @@
-import type { Hub } from "@generated/prisma/client"
+import type { Hub } from "@/generated/prisma/client"
 
 /**
  * Repository interface for Hub aggregate.

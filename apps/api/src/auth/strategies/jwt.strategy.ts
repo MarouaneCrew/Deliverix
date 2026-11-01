@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common"
 import { PassportStrategy } from "@nestjs/passport"
 import { ExtractJwt, Strategy } from "passport-jwt"
-import type { UserRole } from "../../generated/prisma/enums"
+import type { UserRole } from "@/generated/prisma/enums"
 import type { ConfigService } from "@nestjs/config"
-import type { PrismaService } from "../../prisma/prisma.service"
+import type { PrismaService } from "@/prisma/prisma.service"
 import { UnauthorizedException } from "@nestjs/common"
 
 /**

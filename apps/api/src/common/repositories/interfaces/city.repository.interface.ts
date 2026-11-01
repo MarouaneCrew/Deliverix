@@ -1,4 +1,4 @@
-import type { City } from "@generated/prisma/client"
+import type { City } from "@/generated/prisma/client"
 
 /**
  * Repository interface for City reference data.

@@ -4,11 +4,11 @@
  * ADMIN role required for modifications; all authenticated users can list/get hubs.
  */
 import { Controller, Get, Post, Body, Patch, Param, UseGuards } from "@nestjs/common"
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
-import { RolesGuard } from "../auth/guards/roles.guard"
-import { UserRole } from "../generated/prisma/enums"
-import { Roles } from "../auth/decorators/roles.decorator"
-import { CurrentUser } from "../auth/decorators/current-user.decorator"
+import { JwtAuthGuard } from "@/auth/guards/jwt-auth.guard"
+import { RolesGuard } from "@/auth/guards/roles.guard"
+import { UserRole } from "@/generated/prisma/enums"
+import { Roles } from "@/auth/decorators/roles.decorator"
+import { CurrentUser } from "@/auth/decorators/current-user.decorator"
 import type { CreateHubDto } from "./dto/create-hub.dto"
 import type { UpdateHubDto } from "./dto/update-hub.dto"
 import type { HubsService } from "./hubs.service"

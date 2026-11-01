@@ -6,8 +6,9 @@ import { ConfigModule, ConfigService } from "@nestjs/config"
 import { AuthController } from "./auth.controller"
 import { AuthService } from "./auth.service"
 import { JwtStrategy } from "./strategies/jwt.strategy"
-import { UserRepository } from "../common/repositories/impl/user.repository"
-import { repositoryProviders } from "../common/repositories/repository.providers"
+import { UserRepository } from "@/common/repositories/impl/user.repository"
+import { repositoryProviders } from "@/common/repositories/repository.providers"
+import { CompanyRepository } from "@/common/repositories/impl/company.repository"
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { repositoryProviders } from "../common/repositories/repository.providers
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UserRepository, ...repositoryProviders],
+  providers: [AuthService, JwtStrategy, CompanyRepository],
   exports: [AuthService, JwtStrategy],
 })
 export class AuthModule {}

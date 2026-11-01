@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common"
-import type { PrismaService } from "@prisma/prisma.service"
+import type { PrismaService } from "@/prisma/prisma.service"
 import type {
   IMerchantRepository,
   MerchantWithCityAndUser,
-} from "../interfaces/merchant.repository.interface"
-import type { Merchant } from "@generated/prisma/client"
+} from "@/common/repositories/interfaces/merchant.repository.interface"
+import type { Merchant } from "@/generated/prisma/client"
 
 @Injectable()
 export class MerchantRepository implements IMerchantRepository {

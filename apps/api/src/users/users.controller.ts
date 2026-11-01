@@ -8,11 +8,11 @@
  * ADMIN role required for all operations.
  */
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from "@nestjs/common"
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
-import { RolesGuard } from "../auth/guards/roles.guard"
-import { UserRole } from "../generated/prisma/enums"
-import { CurrentUser } from "../auth/decorators/current-user.decorator"
-import { Roles } from "../auth/decorators/roles.decorator"
+import { JwtAuthGuard } from "@/auth/guards/jwt-auth.guard"
+import { RolesGuard } from "@/auth/guards/roles.guard"
+import { UserRole } from "@/generated/prisma/enums"
+import { CurrentUser } from "@/auth/decorators/current-user.decorator"
+import { Roles } from "@/auth/decorators/roles.decorator"
 import type { CreateUserDto } from "./dto/create-user.dto"
 import type { UpdateUserDto } from "./dto/update-user.dto"
 import type { UsersService } from "./users.service"

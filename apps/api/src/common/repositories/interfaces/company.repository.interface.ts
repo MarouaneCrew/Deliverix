@@ -1,4 +1,4 @@
-import type { Company } from "@generated/prisma/client"
+import type { Company } from "@/generated/prisma/client"
 
 /**
  * Repository interface for Company aggregate.
